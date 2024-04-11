@@ -35,7 +35,7 @@ case class TimerAccumState[T](
   eventsMaxGapMs: Long
 ) extends AccumState[T, Boolean, TimerAccumState[T]] {
 
-  val log = Logger(classOf[TimerAccumState[T]])
+  // val log = Logger(classOf[TimerAccumState[T]])
 
   @inline
   override def updated(
@@ -44,8 +44,8 @@ case class TimerAccumState[T](
     idxValue: IdxValue[T]
   ): (TimerAccumState[T], QI[Boolean]) = {
 
-    log.debug(s"Current state: $this")
-    log.debug(s"Received event: $idxValue with times: $times")
+    // log.debug(s"Current state: $this")
+    // log.debug(s"Received event: $idxValue with times: $times")
     idxValue.value match {
       // clean queue in case of fail. Return fails for all arrived events
       // (unless the failing event occurs late enough to form the success window)
@@ -72,15 +72,15 @@ case class TimerAccumState[T](
           val successPart = actualNewResult.copy(end = idxValue.start)
           val failPart = actualNewResult.copy(start = idxValue.start + 1, value = Fail)
           queueToReturn.enqueue(successPart, failPart)
-          log.debug(s"Returning pair of results: $successPart and $failPart")
-          log.debug(s"New state: ${TimerAccumState(updatedWindowQueue, times.last, idxValue.value, eventsMaxGapMs)}")
+          // log.debug(s"Returning pair of results: $successPart and $failPart")
+          // log.debug(s"New state: ${TimerAccumState(updatedWindowQueue, times.last, idxValue.value, eventsMaxGapMs)}")
           (
             TimerAccumState(updatedWindowQueue, times.last, idxValue.value, eventsMaxGapMs),
             queueToReturn
           )
         } else {
-          log.debug(s"Returning single result: $newOptResult")
-          log.debug(s"New state: ${TimerAccumState(updatedWindowQueue, times.last, idxValue.value, eventsMaxGapMs)}")
+          // log.debug(s"Returning single result: $newOptResult")
+          // log.debug(s"New state: ${TimerAccumState(updatedWindowQueue, times.last, idxValue.value, eventsMaxGapMs)}")
           newOptResult.foreach(r => queueToReturn.enqueue(r))
           (
             TimerAccumState(updatedWindowQueue, times.last, idxValue.value, eventsMaxGapMs),
@@ -104,14 +104,14 @@ case class TimerAccumState[T](
           // window is not full yet, return Fail for all points but keep them in the queue
           val newOptResultFail = createIdxValue(times.headOption, times.lastOption, Result.fail)
           val newResults = newOptResultFail.map(PQueue.apply).getOrElse(PQueue.empty)
-          log.debug(s"Returning results: $newResults")
-          log.debug(s"New state: ${TimerAccumState(cleanedWindowQueue, times.last, idxValue.value, eventsMaxGapMs)}")
+          // log.debug(s"Returning results: $newResults")
+          // log.debug(s"New state: ${TimerAccumState(cleanedWindowQueue, times.last, idxValue.value, eventsMaxGapMs)}")
           (
             TimerAccumState(cleanedWindowQueue, times.last, idxValue.value, eventsMaxGapMs),
             newResults
           )
         } else {
-          log.debug(s"Removing old data from queue: $oldOutputs")
+          // log.debug(s"Removing old data from queue: $oldOutputs")
           // return Success for the points late enough
           val startingPoint = oldOutputs.head._2.plus(window)
           val startingIdx = times.find(_._2 >= startingPoint).map(_._1).get // this will always be non-empty by def.
@@ -123,8 +123,8 @@ case class TimerAccumState[T](
           }
           // Successes should occur always, as least on the last row!
           newResults.enqueue(IdxValue(startingIdx, times.last._1, Succ(true)))
-          log.debug(s"Returning results: $newResults")
-          log.debug(s"New state: ${TimerAccumState(cleanedWindowQueue, times.last, idxValue.value, eventsMaxGapMs)}")
+          // log.debug(s"Returning results: $newResults")
+          // log.debug(s"New state: ${TimerAccumState(cleanedWindowQueue, times.last, idxValue.value, eventsMaxGapMs)}")
           (
             TimerAccumState(cleanedWindowQueue, times.last, idxValue.value, eventsMaxGapMs),
             newResults

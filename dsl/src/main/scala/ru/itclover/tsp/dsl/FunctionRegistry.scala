@@ -278,6 +278,18 @@ object DefaultFunctions extends LazyLogging {
           (xs: Seq[Any]) => toResult[T](xs(0)).map(x => 1.0 / Math.tan(Math.toRadians(x))),
           astType
         )
+      ),
+      ("isnan", Seq(astType)) -> (
+        (
+          (xs: Seq[Any]) => toResult[T](xs(0)).map(x => x.toDouble.isNaN),
+          astType
+        )
+      ),
+      ("isnull", Seq(astType)) -> (
+        (
+          (xs: Seq[Any]) => toResult[T](xs(0)).map(x => x.toDouble.isNaN),
+          astType
+        )
       )
     )
   }

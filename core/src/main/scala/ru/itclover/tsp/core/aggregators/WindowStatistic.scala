@@ -7,6 +7,8 @@ import ru.itclover.tsp.core.{Pattern, Time, Window, _}
 
 import scala.Ordering.Implicits._
 import scala.collection.{mutable => m}
+import com.typesafe.scalalogging.Logger
+import ru.itclover.tsp.core.Pat.logger
 
 //todo docs
 //todo simplify
@@ -30,6 +32,8 @@ case class WindowStatisticAccumState[T](
   windowQueue: m.ArrayDeque[WindowStatisticQueueInstance]
 ) extends AccumState[T, WindowStatisticResult, WindowStatisticAccumState[T]] {
 
+  // val log = Logger[WindowStatisticAccumState[T]]
+
   override def updated(
     window: Window,
     times: m.ArrayDeque[(Idx, Time)],
@@ -39,6 +43,7 @@ case class WindowStatisticAccumState[T](
     val (newLastValue, newWindowQueue, newOutputQueue) =
       times.foldLeft(Tuple3(lastValue, windowQueue, PQueue.empty[WindowStatisticResult])) {
         case ((lastValue, windowQueue, outputQueue), (idx, time)) =>
+          // log.warn(s"WinStats WQ length = ${windowQueue.length}, OQ length = ${outputQueue.size}")
           addOnePoint(time, idx, window, isSuccess, lastValue, windowQueue, outputQueue)
       }
 
@@ -55,6 +60,7 @@ case class WindowStatisticAccumState[T](
     outputQueue: QI[WindowStatisticResult]
   ): (Option[WindowStatisticResult], m.ArrayDeque[WindowStatisticQueueInstance], QI[WindowStatisticResult]) = {
 
+    // log.warn(s"WinStats ${window.toMillis}, point arrived: $time, $idx, $isSuccess")
     // add new element to queue
     val (newLastValue, newWindowStatisticQueueInstance) =
       lastValue
@@ -98,6 +104,9 @@ case class WindowStatisticAccumState[T](
         )
       }
       .getOrElse(finalNewLastValue)
+      .copy(idx = idx)
+
+    // log.warn(s"WinStats, returned value: $idx, $correctedLastValue")
 
     val finalWindowQueue = { updatedWindowQueue.append(newWindowStatisticQueueInstance); updatedWindowQueue }
     val updatedOutputQueue = outputQueue.enqueue(IdxValue(idx, idx, Result.succ(correctedLastValue)))
@@ -128,30 +137,36 @@ case class WindowStatisticResult(
   def totalMillis: Idx = successMillis + failMillis
   def totalCount: Idx = successCount + failCount
 
+  // val log = Logger[WindowStatisticResult]
+
   def plusChange(wsqi: WindowStatisticQueueInstance, window: Window): WindowStatisticResult = this.copy(
     successCount = successCount + (if (wsqi.isSuccess) 1 else 0),
-    successMillis = successMillis + math.min(wsqi.successTimeFromPrevious, window.toMillis),
+    successMillis = successMillis + math.min(wsqi.successTimeFromPrevious, window.toMillis - successMillis),
     failCount = failCount + (if (!wsqi.isSuccess) 1 else 0),
-    failMillis = failMillis + math.min(wsqi.failTimeFromPrevious, window.toMillis)
+    failMillis = failMillis + math.min(wsqi.failTimeFromPrevious, window.toMillis - successMillis)
   )
 
   def minusChange(wsqi: WindowStatisticQueueInstance, window: Window): WindowStatisticResult = {
-    val pastTime = time.toMillis - wsqi.time.toMillis
+    val pastTime = time.toMillis - wsqi.time.toMillis - window.toMillis
     val maxChangeTime = Math.max(0, window.toMillis - pastTime)
+
+    // log.warn(
+    //   s"WinStats Result: minus change: this = $this, data = $wsqi, past time = $pastTime, max change time = $maxChangeTime"
+    // )
 
     if (wsqi.isSuccess) {
       this.copy(
         successCount = successCount - 1,
-        successMillis = successMillis - math.min(maxChangeTime, wsqi.successTimeFromPrevious),
+        successMillis = Math.max(0, successMillis - math.min(maxChangeTime, wsqi.successTimeFromPrevious)),
         failCount = failCount,
-        failMillis = failMillis - math.min(maxChangeTime, wsqi.failTimeFromPrevious)
+        failMillis = Math.max(0, failMillis - math.min(maxChangeTime, wsqi.failTimeFromPrevious))
       )
     } else {
       this.copy(
         successCount = successCount,
-        successMillis = successMillis - math.min(maxChangeTime, wsqi.successTimeFromPrevious),
+        successMillis = Math.max(0, successMillis - math.min(maxChangeTime, wsqi.successTimeFromPrevious)),
         failCount = failCount - 1,
-        failMillis = failMillis - math.min(maxChangeTime, wsqi.failTimeFromPrevious)
+        failMillis = Math.max(0, failMillis - math.min(maxChangeTime, wsqi.failTimeFromPrevious))
       )
     }
   }
