@@ -92,19 +92,20 @@ case class WindowStatisticAccumState[T](
     val finalNewLastValue = outputs.foldLeft(newLastValue) { case (cmr, elem) => cmr.minusChange(elem, window) }
 
     // we have to correct result because of the most early event in queue can contain additional time which is not in window.
-    val correctedLastValue = updatedWindowQueue.headOption
-      .map { cmqi =>
-        val maxChangeTime = window.toMillis - (finalNewLastValue.time.toMillis - cmqi.time.toMillis)
-        val successCorrection =
-          if (cmqi.successTimeFromPrevious == 0) 0 else cmqi.successTimeFromPrevious - maxChangeTime
-        val failCorrection = if (cmqi.failTimeFromPrevious == 0) 0 else cmqi.failTimeFromPrevious - maxChangeTime
-        finalNewLastValue.copy(
-          successMillis = finalNewLastValue.successMillis - successCorrection,
-          failMillis = finalNewLastValue.failMillis - failCorrection
-        )
-      }
-      .getOrElse(finalNewLastValue)
-      .copy(idx = idx)
+    // val correctedLastValue = updatedWindowQueue.headOption
+    //   .map { cmqi =>
+    //     val maxChangeTime = window.toMillis - (finalNewLastValue.time.toMillis - cmqi.time.toMillis)
+    //     val successCorrection =
+    //       if (cmqi.successTimeFromPrevious == 0) 0 else cmqi.successTimeFromPrevious - maxChangeTime
+    //     val failCorrection = if (cmqi.failTimeFromPrevious == 0) 0 else cmqi.failTimeFromPrevious - maxChangeTime
+    //     finalNewLastValue.copy(
+    //       successMillis = finalNewLastValue.successMillis - successCorrection,
+    //       failMillis = finalNewLastValue.failMillis - failCorrection
+    //     )
+    //   }
+    //   .getOrElse(finalNewLastValue)
+    //   .copy(idx = idx)
+    val correctedLastValue = finalNewLastValue.copy(idx = idx)
 
     // log.warn(s"WinStats, returned value: $idx, $correctedLastValue")
 
@@ -134,21 +135,34 @@ case class WindowStatisticResult(
   failCount: Long,
   failMillis: Long
 ) {
-  def totalMillis: Idx = successMillis + failMillis
-  def totalCount: Idx = successCount + failCount
+  def totalMillis: Long = successMillis + failMillis
+  def totalCount: Long = successCount + failCount
 
   // val log = Logger[WindowStatisticResult]
 
-  def plusChange(wsqi: WindowStatisticQueueInstance, window: Window): WindowStatisticResult = this.copy(
-    successCount = successCount + (if (wsqi.isSuccess) 1 else 0),
-    successMillis = successMillis + math.min(wsqi.successTimeFromPrevious, window.toMillis - successMillis),
-    failCount = failCount + (if (!wsqi.isSuccess) 1 else 0),
-    failMillis = failMillis + math.min(wsqi.failTimeFromPrevious, window.toMillis - successMillis)
-  )
+  def plusChange(wsqi: WindowStatisticQueueInstance, window: Window): WindowStatisticResult = {
+
+    val newSuccessMillis = successMillis + math.min(wsqi.successTimeFromPrevious, window.toMillis - successMillis)
+    val newFailMillis = failMillis + math.min(wsqi.failTimeFromPrevious, window.toMillis - failMillis)
+
+    val successDecrease = if (wsqi.isSuccess) 0 else Math.max(0, newSuccessMillis + newFailMillis - window.toMillis)
+    val failDecrease = if (!wsqi.isSuccess) 0 else Math.max(0, newSuccessMillis + newFailMillis - window.toMillis)
+
+    val res = this.copy(
+      successCount = successCount + (if (wsqi.isSuccess) 1 else 0),
+      successMillis = newSuccessMillis - successDecrease,
+      failCount = failCount + (if (!wsqi.isSuccess) 1 else 0),
+      failMillis = newFailMillis - failDecrease
+    )
+    // log.warn(
+    //  s"WinStats Result: plus change: this = $this, data = $wsqi, res = $res"
+    // )
+    res
+  }
 
   def minusChange(wsqi: WindowStatisticQueueInstance, window: Window): WindowStatisticResult = {
     val pastTime = time.toMillis - wsqi.time.toMillis - window.toMillis
-    val maxChangeTime = Math.max(0, window.toMillis - pastTime)
+    val maxChangeTime = Math.min(window.toMillis, pastTime)
 
     // log.warn(
     //   s"WinStats Result: minus change: this = $this, data = $wsqi, past time = $pastTime, max change time = $maxChangeTime"
@@ -157,16 +171,16 @@ case class WindowStatisticResult(
     if (wsqi.isSuccess) {
       this.copy(
         successCount = successCount - 1,
-        successMillis = Math.max(0, successMillis - math.min(maxChangeTime, wsqi.successTimeFromPrevious)),
+        successMillis = Math.max(0, successMillis - maxChangeTime),
         failCount = failCount,
-        failMillis = Math.max(0, failMillis - math.min(maxChangeTime, wsqi.failTimeFromPrevious))
+        failMillis = failMillis
       )
     } else {
       this.copy(
         successCount = successCount,
-        successMillis = Math.max(0, successMillis - math.min(maxChangeTime, wsqi.successTimeFromPrevious)),
+        successMillis = successMillis,
         failCount = failCount - 1,
-        failMillis = Math.max(0, failMillis - math.min(maxChangeTime, wsqi.failTimeFromPrevious))
+        failMillis = Math.max(0, failMillis - maxChangeTime)
       )
     }
   }
