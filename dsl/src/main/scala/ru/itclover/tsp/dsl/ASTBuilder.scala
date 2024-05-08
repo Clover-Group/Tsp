@@ -388,11 +388,11 @@ class ASTBuilder(
   }
 
   def anyWordInDblQuotes: Rule1[String] = rule {
-    '"' ~ capture(oneOrMore(noneOf("\"") | "\"\"")) ~ '"' ~ ws
+    '"' ~ capture(zeroOrMore(noneOf("\"") | "\"\"")) ~ '"' ~ ws
   }
 
   def anyWordInSingleQuotes: Rule1[String] = rule {
-    '\'' ~ capture(oneOrMore(noneOf("'") | "''")) ~ '\'' ~ ws
+    '\'' ~ capture(zeroOrMore(noneOf("'") | "''")) ~ '\'' ~ ws
   }
 
   def fieldValue: Rule1[Identifier] = rule {

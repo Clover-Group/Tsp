@@ -7,7 +7,7 @@ dockerUsername in Docker := Some("clovergrp")
 dockerUpdateLatest := true
 dockerAlias in Docker := dockerAlias.value.withTag(dockerAlias.value.tag.map(_.replace("+", "_")))
 
-scalaVersion in ThisBuild := "3.3.1"
+scalaVersion in ThisBuild := "3.4.1"
 ThisBuild / semanticdbEnabled := true
 ThisBuild / semanticdbVersion := scalafixSemanticdb.revision
 resolvers in ThisBuild ++= Seq(
@@ -23,9 +23,9 @@ lazy val commonSettings = Seq(
   // Improved type inference via the fix for SI-2712 (for Cats dep.)
   // Remove StringPlusAny wart because of false alarming on s-strings
   wartremoverWarnings ++= Warts.unsafe.filter(w => w != Wart.DefaultArguments & w != Wart.StringPlusAny),
-  ghreleaseNotes := Utils.releaseNotes,
-  ghreleaseRepoOrg := "Clover-Group",
-  ghreleaseRepoName := "tsp",
+  //ghreleaseNotes := Utils.releaseNotes,
+  //ghreleaseRepoOrg := "Clover-Group",
+  //ghreleaseRepoName := "tsp",
   // Comment for production builds
   // addCompilerPlugin(scalafixSemanticdb),
   scalacOptions --= Seq(
@@ -35,7 +35,7 @@ lazy val commonSettings = Seq(
   //
   //),
   // don't release subprojects
-  githubRelease := null,
+  //githubRelease := null,
   skip in publish := true,
   maxErrors := 5,
 
@@ -87,7 +87,7 @@ dockerCommands := Seq()
 import com.typesafe.sbt.packager.docker._
 dockerCommands := Seq(
   //Cmd("FROM", "openjdk:12.0.1-jdk-oracle"),
-  Cmd("FROM", "openjdk:20-slim"),
+  Cmd("FROM", "openjdk:22-slim"),
   //Cmd("FROM", "openjdk:8-jre-slim"),
   Cmd("LABEL", s"""MAINTAINER="${(maintainer in Docker).value}""""),
   Cmd("ADD", s"lib/${(assembly in mainRunner).value.getName}", "/opt/tsp.jar"),
@@ -155,7 +155,7 @@ lazy val root = (project in file("."))
   .enablePlugins(GitVersioning, JavaAppPackaging, UniversalPlugin)
 
   .settings(commonSettings)
-  .settings(githubRelease := Utils.defaultGithubRelease.evaluated)
+  //.settings(githubRelease := Utils.defaultGithubRelease.evaluated)
   .aggregate(core, config, http, streaming, dsl, itValid)
   .dependsOn(core, config, http, streaming, dsl, itValid)
 
@@ -251,7 +251,7 @@ git.gitTagToVersionNumber := { (tag: String) =>
   tag match {
     case VersionRegex(v, "") => Some(v)
     case VersionRegex(v, "SNAPSHOT") => Some(s"${nextVersion(v)}-SNAPSHOT")
-    case VersionRegex(v, s) if s.matches("[0-9].+") => Some(s"${nextVersion(v)}-preview$s")
+    case VersionRegex(v, s) if s.matches("[0-9].+") => Some(s"${nextVersion(v)}-preview$s-SNAPSHOT")
     case VersionRegex(v, s) => Some(s"$v-$s")
     case _ => None
   }
@@ -278,9 +278,9 @@ releaseProcess := Seq[ReleaseStep](
   pushChanges                             // pushes into upstream, also checks that an upstream branch is properly configured
 )
 
-ghreleaseAssets := Seq(file(s"./mainRunner/target/scala-3/TSP_v${version.value}.jar"))
+//ghreleaseAssets := Seq(file(s"./mainRunner/target/scala-3/TSP_v${version.value}.jar"))
 
-githubRelease := githubRelease.dependsOn(assembly in mainRunner).evaluated
+//githubRelease := githubRelease.dependsOn(assembly in mainRunner).evaluated
 
 addCommandAlias("com", "all compile test:compile it:compile")
 addCommandAlias("lint", "; compile:scalafix --check ; test:scalafix --check")

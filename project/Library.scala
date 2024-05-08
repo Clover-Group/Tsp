@@ -1,7 +1,7 @@
 import sbt._
 
 object Version {
-  val logback = "1.5.3"
+  val logback = "1.5.6"
   val scalaLogging = "3.9.5"
   val logbackContrib = "0.1.5"
 
@@ -16,8 +16,8 @@ object Version {
   val sprayJson = "1.3.6"
 
   val cats = "3.5.4"
-  val fs2 = "3.9.4"
-  val fs2Kafka = "3.3.1"
+  val fs2 = "3.10.2"
+  val fs2Kafka = "3.5.1"
   val doobie = "1.0.0-RC5"
 
   val scalaTest = "3.2.18"
@@ -26,7 +26,7 @@ object Version {
 
   val testContainers = "0.41.3"
   val testContainersKafka = "1.19.7"
-  val postgres = "42.7.2"
+  val postgres = "42.7.3"
 
   val avro = "1.8.2"
 
@@ -34,7 +34,7 @@ object Version {
 
   val shapeless = "2.3.3"
 
-  val jackson = "2.16.2"
+  val jackson = "2.17.1"
   val jaxb = "4.0.5"
   val activation = "1.2.0"
 
@@ -55,7 +55,7 @@ object Version {
 
   val strawmanVersion = "0.9.0"
 
-  val redissonVersion = "3.27.1"
+  val redissonVersion = "3.29.0"
   val kryoVersion = "5.6.0"
 
   val akkaHttpMetrics = "1.7.1"
