@@ -23,11 +23,13 @@ import java.sql.JDBCType
 
 trait OutputConf[Event] {
 
-  def getSink: Pipe[IO, Event, Unit]
+  def getSink: Pipe[IO, fs2.Chunk[Event], Unit]
 
   def parallelism: Option[Int]
 
   def rowSchema: EventSchema
+
+  def batchSize: Int
 }
 
 /** Sink for anything that support JDBC connection
@@ -62,7 +64,7 @@ case class JDBCOutputConf(
     case _                                       => driverName
   }
 
-  override def getSink: Pipe[IO, Row, Unit] =
+  override def getSink: Pipe[IO, fs2.Chunk[Row], Unit] =
     source => fuseMap(source, insertQuery)(transactor).drain
 
   lazy val (queryUserName, queryPassword) = getCreds
@@ -102,14 +104,20 @@ case class JDBCOutputConf(
     }
   }
 
-  def insertQuery(data: Row): ConnectionIO[Int] = {
+  def insertQuery(data: fs2.Chunk[Row]): ConnectionIO[Int] = {
     val fields = rowSchema.fieldsNames.mkString(", ")
     (
       fr"""insert into """
         ++ Fragment.const(s"$tableName ($fields)")
-        ++ fr"values ("
-        ++ data.toList.zip(rowSchema.fieldsTypes).map((x, t) => fragmentForDataValue(x, t)).intercalate(fr",")
-        ++ fr")"
+        ++ fr"values"
+        ++ data.asSeq.toList
+          .map(r =>
+            fr"(" ++ r.toList
+              .zip(rowSchema.fieldsTypes)
+              .map((x, t) => fragmentForDataValue(x, t))
+              .intercalate(fr",") ++ fr")"
+          )
+          .intercalate(fr", ")
     ).update.run
   }
 
@@ -188,6 +196,7 @@ case class JDBCOutputConf(
 
   }
 
+  override def batchSize: Int = batchInterval.getOrElse(100)
 }
 
 ///**
@@ -228,12 +237,14 @@ case class KafkaOutputConf(
     .withAcks(Acks.All)
     .withProperty("auto.create.topics.enable", "true")
 
-  override def getSink: Pipe[IO, Row, Unit] = stream =>
+  override def getSink: Pipe[IO, fs2.Chunk[Row], Unit] = stream =>
     stream
       .map { data =>
-        val serialized = serialize(data, rowSchema)
-        val rec = ProducerRecord(topic, ZonedDateTime.now(ZoneId.of("UTC")).toString, serialized)
-        ProducerRecords.one(rec)
+        val recs = data.asSeq.map { row =>
+          val serialized = serialize(row, rowSchema)
+          ProducerRecord(topic, ZonedDateTime.now(ZoneId.of("UTC")).toString, serialized)
+        }
+        fs2.Chunk(recs: _*)
       }
       .through(KafkaProducer.pipe(producerSettings))
       .drain
@@ -280,4 +291,5 @@ case class KafkaOutputConf(
 
   }
 
+  override def batchSize: Int = 100
 }

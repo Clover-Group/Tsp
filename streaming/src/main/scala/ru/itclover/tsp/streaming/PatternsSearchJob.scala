@@ -89,12 +89,13 @@ case class PatternsSearchJob[In: EventToList, InKey, InItem](
   def applyResultMapper[E](mapper: PatternsToRowMapper[Incident, E]): fs2.Pipe[IO, Chunk[Incident], E] =
     _.map(_.map(mapper.map(_).asInstanceOf[E])).flatMap(c => fs2.Stream.chunk(c))
 
-  def saveStream[E](uuid: String, outputConf: OutputConf[E], sinkIdx: Int): fs2.Pipe[IO, E, Unit] = _.chunkLimit(100)
-    .flatMap { c =>
-      CheckpointingService.updateCheckpointWritten(uuid, sinkIdx, c.size)
-      fs2.Stream.chunk(c)
-    }
-    .through(outputConf.getSink)
+  def saveStream[E](uuid: String, outputConf: OutputConf[E], sinkIdx: Int): fs2.Pipe[IO, E, Unit] =
+    _.chunkLimit(outputConf.batchSize)
+      .map { c =>
+        CheckpointingService.updateCheckpointWritten(uuid, sinkIdx, c.size)
+        c
+      }
+      .through(outputConf.getSink)
 
   def incidentsFromPatterns[T](
     stream: fs2.Stream[IO, In],
