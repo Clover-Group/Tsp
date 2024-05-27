@@ -5,7 +5,7 @@ import cats.syntax.flatMap._
 import com.typesafe.scalalogging.Logger
 
 class StateMachine[F[_]: Monad: Traverse] {
-  private val log = Logger("StateMachineV2")
+  private val log = Logger[StateMachine[F]]
 
   /** Runs stateMachine for given `pattern` and `events`. Use `seedState` as an initial State. Calls `consume` for every
     * output result.
@@ -29,8 +29,10 @@ class StateMachine[F[_]: Monad: Traverse] {
     * @return
     *   F[State] there State's queue is empty. It allows to avoid memory leaks.
     */
+
   def run[Event, Out, State](
     pattern: Pattern[Event, State, Out],
+    patternIdAndSubunit: (Int, Int),
     events: Iterable[Event],
     seedState: State,
     consume: IdxValue[Out] => F[Unit] = (_: IdxValue[Out]) => Monad[F].pure(()),
@@ -40,6 +42,7 @@ class StateMachine[F[_]: Monad: Traverse] {
     var counter = 0
     import cats.instances.list._
 
+    val start = System.nanoTime()
     val finalState: F[State] = events.iterator
       .grouped(groupSize)
       .foldLeft(Monad[F].pure(seedState)) { case (state, evs) =>
@@ -59,8 +62,9 @@ class StateMachine[F[_]: Monad: Traverse] {
             }
           }
       }
+    val end = System.nanoTime()
 
-    log.debug("Finished")
+    log.info(s"Pattern $patternIdAndSubunit: processed $counter rows for ${(end - start) / 1e6} milliseconds")
     finalState
   }
 

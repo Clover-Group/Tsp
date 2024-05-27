@@ -10,6 +10,7 @@ import scala.collection.mutable.ListBuffer
 
 case class PatternProcessor[E: TimeExtractor, State, Out](
   pattern: Pattern[E, State, Out],
+  patternIdAndSubunit: (Int, Int),
   eventsMaxGapMs: Long,
   initialState: () => State
 ) {
@@ -50,7 +51,7 @@ case class PatternProcessor[E: TimeExtractor, State, Out](
     // this step has side-effect = it calls `consume` for each output event. We need to process
     // events sequentually, that's why I use foldLeft here
     lastState = sequences.zip(seedStates).foldLeft(initialState()) { case (_, (events, seedState)) =>
-      machine.run(pattern, events, seedState, consume)
+      machine.run(pattern, patternIdAndSubunit, events, seedState, consume)
     }
 
     lastTime = elements.lastOption.map(timeExtractor(_)).getOrElse(Time(0))

@@ -127,6 +127,7 @@ case class PatternsSearchJob[In: EventToList, InKey, InItem](
 
         PatternProcessor[In, Optimizer.S[Segment], Incident](
           incidentPattern,
+          (rawP.id, rawP.subunit.getOrElse(-1)),
           source.conf.eventsMaxGapMs.getOrElse(60000L),
           () => stateOption.flatMap(_.states.get(rawP)).getOrElse(incidentPattern.initialState())
         )
