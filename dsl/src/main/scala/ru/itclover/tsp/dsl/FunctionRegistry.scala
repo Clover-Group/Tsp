@@ -6,6 +6,7 @@ import ru.itclover.tsp.core.{Fail, Result, Succ}
 
 import scala.reflect.ClassTag
 import scala.util.Try
+import com.typesafe.scalalogging.Logger
 
 type PFunction = (Seq[Result[Any]] => Result[Any])
 
@@ -76,6 +77,7 @@ object FunctionRegistry {
 // Function registry uses Any
 @SuppressWarnings(Array("org.wartremover.warts.Any"))
 object DefaultFunctions extends LazyLogging {
+  val log = Logger[DefaultFunctions.type]
 
   // Here, asInstanceOf is used in a safe way (and conversion from null).
   @SuppressWarnings(Array("org.wartremover.warts.AsInstanceOf", "org.wartremover.warts.Null"))
@@ -301,9 +303,9 @@ object DefaultFunctions extends LazyLogging {
 
     def func(sym: String, xs: Seq[Any])(implicit l: Logical[Any]): Result[Boolean] = {
 
-      // log.debug(s"func($sym): Arg0 = $xs.head, Arg1 = $xs(1)")
-      // log.info(s"Args = ${(xs.head, xs.lift(1).getOrElse(Unit))}")
-      // log.info(s"Arg results = ${(toResult[Boolean](xs.head), toResult[Boolean](xs.lift(1).getOrElse(Unit)))}")
+      // log.info(s"FUNREG: func($sym): Arg0 = ${xs.head}, Arg1 = ${xs(1)}")
+      // log.info(s"FUNREG: Args = ${(xs.head, xs.lift(1).getOrElse(()))}")
+      // log.info(s"FUNREG: Arg results = ${(toResult[Boolean](xs.head), toResult[Boolean](xs.lift(1).getOrElse(())))}")
       (toResult[Boolean](xs(0)), toResult[Boolean](xs.lift(1).getOrElse(()))) match {
         case (Succ(x0), Succ(x1)) =>
           sym match {

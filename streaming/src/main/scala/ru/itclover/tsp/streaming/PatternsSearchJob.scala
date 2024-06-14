@@ -300,18 +300,18 @@ object PatternsSearchJob {
               case Some(p) =>
                 val start = c.segment.from.toMillis - p.segment.to.toMillis > c.maxWindowMs
                 val chunk = if (start) {
-                  log.debug(f"Starting new event series from ${c.segment.from} --- ${c.segment.to}")
+                  // log.info(f"REDUCE: Starting new event series from ${c.segment.from} --- ${c.segment.to}")
                   Chunk((Some(c), true), (None, false))
                 } else {
-                  log.debug(
-                    f"Continuing event series with ${c.segment.from} --- ${c.segment.to}, " +
-                      f"since ${c.segment.from} minus ${p.segment.to} was less than ${c.maxWindowMs} ms"
-                  )
+                  // log.info(
+                  //   f"REDUCE: Continuing event series with ${c.segment.from} --- ${c.segment.to}, " +
+                  //     f"since ${c.segment.from} minus ${p.segment.to} was less than ${c.maxWindowMs} ms"
+                  // )
                   Chunk((Some(c), false))
                 }
                 fs2.Stream.chunk(chunk)
               case None => {
-                log.debug(f"Starting initial event series from ${c.segment.from} --- ${c.segment.to}")
+                // log.info(f"REDUCE: Starting initial event series from ${c.segment.from} --- ${c.segment.to}")
                 fs2.Stream.chunk(Chunk((Some(c), true), (None, false)))
               }
             }

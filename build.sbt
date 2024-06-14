@@ -3,9 +3,10 @@
 name := "TSP"
 organization in ThisBuild := "ru.itclover" // Fallback-settings for all sub-projects (ThisBuild task)
 maintainer in Docker := "Clover Group"
-dockerUsername in Docker := Some("clovergrp")
+dockerUsername in Docker := Some("clover-group")
 dockerUpdateLatest := true
 dockerAlias in Docker := dockerAlias.value.withTag(dockerAlias.value.tag.map(_.replace("+", "_")))
+dockerRepository in Docker := Some("ghcr.io")
 
 scalaVersion in ThisBuild := "3.4.1"
 ThisBuild / semanticdbEnabled := true

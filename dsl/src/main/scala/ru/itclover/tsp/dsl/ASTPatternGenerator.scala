@@ -170,7 +170,7 @@ case class ASTPatternGenerator[Event, EKey, EItem]()(implicit
         val innerPat = MapPattern(WindowStatistic(generatePattern(fwi.inner), fwi.window))({
           (stats: WindowStatisticResult) =>
             // should wait till the end of the window?
-            // log.warn(s"WinStats MAP PATTERN: $stats")
+            log.warn(s"WinStats MAP PATTERN: $stats")
             val exactly = fwi.exactly.getOrElse(false) || (fwi.interval match {
               case TimeInterval(_, max)    => max < fwi.window.toMillis
               case NumericInterval(_, end) => end.getOrElse(Long.MaxValue) < Long.MaxValue
@@ -182,7 +182,7 @@ case class ASTPatternGenerator[Event, EKey, EItem]()(implicit
               case ni: NumericInterval[Long] if ni.contains(stats.successCount) && isWindowEnded => Result.succ(true)
               case _                                                                             => Result.fail
             }
-            // log.warn(s"WinStats MAP PATTERN RESULT: $res")
+            log.warn(s"WinStats MAP PATTERN RESULT: $res")
             res
         })
         if (fwi.fromStart.getOrElse(false)) {
