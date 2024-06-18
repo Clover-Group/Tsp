@@ -325,8 +325,9 @@ object DefaultFunctions extends LazyLogging {
           }
         case (Fail, Succ(x1)) =>
           sym match {
-            case "or" => Result.succ(x1)
-            case _    => Result.fail
+            case "or"  => Result.succ(x1)
+            case "not" => Result.succ(true) // negating a fail returns a success
+            case _     => Result.fail
           }
         case _ => Result.fail
       }
@@ -341,6 +342,21 @@ object DefaultFunctions extends LazyLogging {
       ("eq", Seq(btype, btype))  -> (((xs: Seq[Any]) => func("eq", xs), btype)),
       ("neq", Seq(btype, btype)) -> (((xs: Seq[Any]) => func("neq", xs), btype)),
       ("not", Seq(btype))        -> (((xs: Seq[Any]) => func("not", xs), btype))
+    )
+  }
+
+  def stringFunctions: Map[(String, Seq[ASTType]), (PFunction, ASTType)] = {
+    Map(
+      ("isnull", Seq(StringASTType)) -> (
+        (
+          (xs: Seq[Any]) =>
+            toResult[String](xs(0)) match {
+              case Succ(t) => Result.succ(t != null)
+              case Fail    => Result.fail
+            },
+          StringASTType
+        )
+      )
     )
   }
 
@@ -611,6 +627,7 @@ object DefaultFunctionRegistry {
     mathFunctions[Long] ++
     mathFunctions[Double] ++
     logicalFunctions ++
+    stringFunctions ++
     comparingFunctions[Int, Int] ++
     comparingFunctions[Long, Long] ++
     comparingFunctions[Double, Double] ++
