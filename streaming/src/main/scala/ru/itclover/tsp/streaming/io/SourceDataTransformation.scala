@@ -12,7 +12,8 @@ case class NarrowDataUnfolding[Event, EKey, EValue](
   fieldsTimeoutsMs: Map[EKey, Long],
   valueColumnMapping: Option[Map[EKey, List[EKey]]] = None,
   defaultTimeout: Option[Long] = None,
-  regularityInterval: Option[Long] = None
+  regularityInterval: Option[Long] = None,
+  startOutputFrom: Option[Double] = None
 ) extends SourceDataTransformation[Event, EKey, EValue]("NarrowDataUnfolding")
     with SourceDataTransformationConf {
   override val config: SourceDataTransformationConf = this

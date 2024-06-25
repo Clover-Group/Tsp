@@ -26,7 +26,7 @@ class SimplePatternTest extends AnyFlatSpec with Matchers {
 
   private def runAndCollectOutput[A](events: Seq[Event[Int]]) = {
     val collect = new ArrayBuffer[IdxValue[Int]]()
-    StateMachine[Id].run(pattern, events, pattern.initialState(), (x: IdxValue[Int]) => collect += x)
+    StateMachine[Id].run(pattern, (1, 1), events, pattern.initialState(), (x: IdxValue[Int]) => collect += x)
     collect
   }
 

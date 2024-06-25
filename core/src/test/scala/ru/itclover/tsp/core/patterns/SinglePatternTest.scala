@@ -19,7 +19,7 @@ class SinglePatternTest extends AnyFlatSpec with Matchers {
 
     val pat = new SimplePattern[EInt, Int](_ => processEvent(event))(Event.extractor)
 
-    val _ = StateMachine[Id].run(pat, Seq(event), pat.initialState())
+    val _ = StateMachine[Id].run(pat, (1, 1), Seq(event), pat.initialState())
   }
 
   it should "process ExtractingPattern correctly" in {
@@ -35,7 +35,7 @@ class SinglePatternTest extends AnyFlatSpec with Matchers {
     // val pat = new ExtractingPattern[EInt, String, Int, Int, Int] ('and, 'or)(extractor, MyExtractor, dec)
     val pat = new ExtractingPattern("and")(Event.extractor, MyExtractor, dec)
 
-    val _ = StateMachine[Id].run(pat, Seq(event), pat.initialState())
+    val _ = StateMachine[Id].run(pat, (1, 1), Seq(event), pat.initialState())
   }
 
 }

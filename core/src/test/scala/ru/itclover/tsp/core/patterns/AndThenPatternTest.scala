@@ -35,7 +35,7 @@ class AndThenPatternTest extends AnyFlatSpec with Matchers {
       yield Event[Int](time.toEpochMilli, idx.toLong, row.toInt, 0)).run(seconds = 100)
 
     val out = new ArrayBuffer[IdxValue[_]]()
-    StateMachine[Id].run(pattern, events, pattern.initialState(), (x: IdxValue[_]) => out += x, 1)
+    StateMachine[Id].run(pattern, (1, 1), events, pattern.initialState(), (x: IdxValue[_]) => out += x, 1)
     out.size shouldBe 100
     out.foreach(_.value.isFail should be(true))
   }
@@ -64,7 +64,7 @@ class AndThenPatternTest extends AnyFlatSpec with Matchers {
       yield Event[Int](time.toEpochMilli, idx.toLong, row.toInt, 0)).run(seconds = 100)
 
     val out = new ArrayBuffer[IdxValue[_]]()
-    StateMachine[Id].run(pattern, events, pattern.initialState(), (x: IdxValue[_]) => out += x, 1)
+    StateMachine[Id].run(pattern, (1, 1), events, pattern.initialState(), (x: IdxValue[_]) => out += x, 1)
 
     out.size shouldBe 100
     // out.foreach(_.value shouldBe "isFail")
@@ -95,7 +95,7 @@ class AndThenPatternTest extends AnyFlatSpec with Matchers {
       yield Event[Int](time.toEpochMilli, idx.toLong, row.toInt, 0)).run(seconds = 100)
 
     val out = new ArrayBuffer[IdxValue[_]]()
-    StateMachine[Id].run(pattern, events, pattern.initialState(), (x: IdxValue[_]) => out += x, 1)
+    StateMachine[Id].run(pattern, (1, 1), events, pattern.initialState(), (x: IdxValue[_]) => out += x, 1)
 
     out.size shouldBe 100
     val (fails, successes) = out.splitAt(10)
@@ -115,7 +115,7 @@ class AndThenPatternTest extends AnyFlatSpec with Matchers {
       yield Event[Int](time.toEpochMilli, idx.toLong, row.toInt, 0)).run(seconds = 11)
 
     val out = new ArrayBuffer[IdxValue[_]]()
-    StateMachine[Id].run(pattern1, events, pattern1.initialState(), (x: IdxValue[_]) => out += x, 1)
+    StateMachine[Id].run(pattern1, (1, 1), events, pattern1.initialState(), (x: IdxValue[_]) => out += x, 1)
 
     out.size shouldBe 11
     out(10) shouldBe IdxValue(10, 10, Result.succ(false))

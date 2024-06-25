@@ -9,7 +9,7 @@ object Version {
 
   val influx = "2.15"
 
-  val clickhouse = "0.6.0"
+  val clickhouse = "0.6.1"
 
   val akka = "2.8.5"
   val akkaHttp = "10.5.3"
@@ -20,12 +20,12 @@ object Version {
   val fs2Kafka = "3.5.1"
   val doobie = "1.0.0-RC5"
 
-  val scalaTest = "3.2.18"
+  val scalaTest = "3.2.19"
   val scalaCheck = "3.2.18.0"
   val jmh = "0.3.7"
 
-  val testContainers = "0.41.3"
-  val testContainersKafka = "1.19.7"
+  val testContainers = "0.41.4"
+  val testContainersKafka = "1.19.8"
   val postgres = "42.7.3"
 
   val avro = "1.8.2"
@@ -55,12 +55,12 @@ object Version {
 
   val strawmanVersion = "0.9.0"
 
-  val redissonVersion = "3.29.0"
+  val redissonVersion = "3.32.0"
   val kryoVersion = "5.6.0"
 
   val akkaHttpMetrics = "1.7.1"
 
-  val scalaCSV = "1.3.10"
+  val scalaCSV = "1.4.0"
 
   val apacheHttp = "5.3.1"
 

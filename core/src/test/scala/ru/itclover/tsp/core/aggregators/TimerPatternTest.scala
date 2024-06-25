@@ -37,7 +37,7 @@ class TimerPatternTest extends AnyWordSpec with Matchers {
       )
         yield Event[Int](time.toEpochMilli, idx.toLong, row, 0)).run(seconds = 100)
       val collect = new ArrayBuffer[IdxValue[Boolean]]()
-      StateMachine[Id].run(pattern, events, pattern.initialState(), (x: IdxValue[Boolean]) => collect += x)
+      StateMachine[Id].run(pattern, (1, 1), events, pattern.initialState(), (x: IdxValue[Boolean]) => collect += x)
 
       // returns 2 intervals
       collect.size shouldBe 3
@@ -55,7 +55,7 @@ class TimerPatternTest extends AnyWordSpec with Matchers {
       )
         yield Event[Int](time.toEpochMilli, idx.toLong, row, 0)).run(seconds = 100)
       val collect = new ArrayBuffer[IdxValue[Boolean]]()
-      StateMachine[Id].run(pattern, events, pattern.initialState(), (x: IdxValue[Boolean]) => collect += x)
+      StateMachine[Id].run(pattern, (1, 1), events, pattern.initialState(), (x: IdxValue[Boolean]) => collect += x)
 
       // returns 2 intervals
 //      collect.size shouldBe 2

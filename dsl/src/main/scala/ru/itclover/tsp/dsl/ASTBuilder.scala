@@ -136,6 +136,8 @@ class ASTBuilder(
     zeroOrMore(
       '*' ~ ws ~ factor ~> ((e: AST, f: AST) => FunctionCall("mul", Seq(e, f)))
         | '/' ~ ws ~ factor ~> ((e: AST, f: AST) => FunctionCall("div", Seq(e, f)))
+        | "->" ~ ws ~ factor ~> ((e: AST, f: AST) => FunctionCall("jsonarrayvalue", Seq(e, f)))
+        | "->>" ~ ws ~ factor ~> ((e: AST, f: AST) => FunctionCall("jsonobjectvalue", Seq(e, f)))
     )
   }
 

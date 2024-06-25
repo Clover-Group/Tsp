@@ -45,7 +45,7 @@ trait StreamSource[Event, EKey, EItem] extends Product with Serializable {
   def fieldsClasses: Seq[(String, Class[_])]
 
   def transformedFieldsClasses: Seq[(String, Class[_])] = conf.dataTransformation match {
-    case Some(NarrowDataUnfolding(_, _, _, mapping, _, _)) =>
+    case Some(NarrowDataUnfolding(_, _, _, mapping, _, _, _)) =>
       val m: Map[EKey, List[EKey]] = mapping.getOrElse(Map.empty)
       val r = fieldsClasses ++ m.map { case (col, list) =>
         list.map(k =>
@@ -66,7 +66,7 @@ trait StreamSource[Event, EKey, EItem] extends Product with Serializable {
   }
 
   def defaultClass: Class[_] = conf.dataTransformation match {
-    case Some(NarrowDataUnfolding(_, value, _, _, _, _)) =>
+    case Some(NarrowDataUnfolding(_, value, _, _, _, _, _)) =>
       fieldsClasses.find { case (s, _) => fieldToEKey(s) == value }.map(_._2).getOrElse(classOf[Double])
     case _ =>
       classOf[Double]
@@ -99,7 +99,7 @@ trait StreamSource[Event, EKey, EItem] extends Product with Serializable {
   implicit def itemToKeyDecoder: Decoder[EItem, EKey] // for narrow data widening
 
   implicit def kvExtractor: Event => (EKey, EItem) = conf.dataTransformation match {
-    case Some(NarrowDataUnfolding(key, value, _, mapping, _, _)) =>
+    case Some(NarrowDataUnfolding(key, value, _, mapping, _, _, _)) =>
       (r: Event) =>
         // TODO: Maybe optimise that by using intermediate (non-serialised) dictionary
         val extractedKey = extractor.apply[EKey](r, key)
@@ -165,7 +165,7 @@ object JdbcSource {
 
   def checkKeysExistence(conf: JDBCInputConf, keys: Set[String]): Either[GenericRuntimeErr, Set[String]] =
     conf.dataTransformation match {
-      case Some(NarrowDataUnfolding(keyColumn, _, _, _, _, _)) =>
+      case Some(NarrowDataUnfolding(keyColumn, _, _, _, _, _, _)) =>
         JdbcService
           .fetchAvailableKeys(conf.fixedDriverName, conf.jdbcUrl, conf.query, keyColumn)
           .toEither

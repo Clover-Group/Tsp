@@ -196,7 +196,7 @@ lazy val dsl = project.in(file("dsl"))
   .settings(commonSettings)
   .settings(
     resolvers += "bintray-djspiewak-maven" at "https://dl.bintray.com/djspiewak/maven",
-    libraryDependencies ++=  Library.scalaTest ++ Library.logging ++ Library.parboiled
+    libraryDependencies ++=  Library.scalaTest ++ Library.logging ++ Library.parboiled ++ Library.sprayJson
   ).dependsOn(core)
 
 lazy val itValid = project.in(file("integration/correctness"))

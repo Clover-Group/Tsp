@@ -20,7 +20,8 @@ class SparseRowsDataAccumulator[InEvent, InKey, Value, OutEvent](
   eventsMaxGapMs: Long,
   regularityInterval: Option[Long],
   timeColumn: InKey,
-  partitionsColumns: Seq[InKey]
+  partitionsColumns: Seq[InKey],
+  startTimestamp: Option[Time]
 )(implicit
   extractTime: TimeExtractor[InEvent],
   extractKeyAndVal: InEvent => (InKey, Value),
@@ -117,7 +118,7 @@ class SparseRowsDataAccumulator[InEvent, InKey, Value, OutEvent](
     }
     lastTimestamp = time
     lastEvent = outEvent
-    returnEvent
+    if (startTimestamp.map(_.toMillis <= time.toMillis).getOrElse(true)) returnEvent else Seq.empty
   }
 
   def getLastEvent: OutEvent = lastEvent
@@ -172,7 +173,9 @@ object SparseRowsDataAccumulator {
             eventsMaxGapMs = streamSource.conf.eventsMaxGapMs.getOrElse(60000),
             regularityInterval = ndu.regularityInterval,
             timeColumn = streamSource.timeColumn,
-            partitionsColumns = streamSource.partitionsColumns
+            partitionsColumns = streamSource.partitionsColumns,
+            startTimestamp =
+              ndu.startOutputFrom.map(ts => Time((ts * streamSource.conf.timestampMultiplier.getOrElse(1000.0)).toLong))
           )(
             timeExtractor,
             extractKeyVal,
@@ -204,7 +207,8 @@ object SparseRowsDataAccumulator {
             eventsMaxGapMs = streamSource.conf.eventsMaxGapMs.getOrElse(60000),
             regularityInterval = wdf.regularityInterval,
             timeColumn = streamSource.timeColumn,
-            partitionsColumns = streamSource.partitionsColumns
+            partitionsColumns = streamSource.partitionsColumns,
+            startTimestamp = None
           )(
             timeExtractor,
             extractKeyVal,

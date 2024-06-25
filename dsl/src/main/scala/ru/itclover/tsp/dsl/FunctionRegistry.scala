@@ -8,6 +8,9 @@ import scala.reflect.ClassTag
 import scala.util.Try
 import com.typesafe.scalalogging.Logger
 
+import spray.json._
+import DefaultJsonProtocol._
+
 type PFunction = (Seq[Result[Any]] => Result[Any])
 
 type PReducer = ((Result[Any], Any) => Result[Any])
@@ -353,6 +356,46 @@ object DefaultFunctions extends LazyLogging {
             toResult[String](xs(0)) match {
               case Succ(t) => Result.succ(t != null)
               case Fail    => Result.fail
+            },
+          StringASTType
+        )
+      ),
+      ("jsonobjectvalue", Seq(StringASTType, StringASTType)) -> (
+        (
+          (xs: Seq[Any]) =>
+            (toResult[String](xs(0)), toResult[String](xs(1))) match {
+              case (Succ(t0), Succ(t1)) =>
+                Result.succ(
+                  Try(t0.parseJson.asJsObject.fields(t1).convertTo[String](JsonStringReader)).recoverWith { ex =>
+                    log.warn(
+                      s"JSON Functions - string $t0 is not a valid JSON object input or has no key $t1: Exception $ex occured"
+                    )
+                    Try("")
+                  }.get
+                )
+              case _ => Result.fail
+            },
+          StringASTType
+        )
+      ),
+      ("jsonarrayvalue", Seq(StringASTType, IntASTType)) -> (
+        (
+          (xs: Seq[Any]) =>
+            (toResult[String](xs(0)), toResult[Int](xs(1))) match {
+              case (Succ(t0), Succ(t1)) =>
+                Result.succ(
+                  Try {
+                    val elems = t0.parseJson.asInstanceOf[JsArray].elements
+                    val index = if (t1 > 0) t1 - 1 else elems.length + t1
+                    elems(index).convertTo[String](JsonStringReader)
+                  }.recoverWith { ex =>
+                    log.warn(
+                      s"JSON Functions - string $t0 is not a valid JSON array input or has no index $t1: Exception $ex occured"
+                    )
+                    Try("")
+                  }.get
+                )
+              case _ => Result.fail
             },
           StringASTType
         )

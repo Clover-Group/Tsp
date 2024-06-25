@@ -21,7 +21,7 @@ class StateMachineTest extends AnyFlatSpec with Matchers {
     // Run FSM
     val pat = ConstPattern[EInt, Int](Result.succ(0))
     val collect = new ArrayBuffer[IdxValue[Int]]()
-    StateMachine[Id].run(pat, Seq(event), pat.initialState(), (x: IdxValue[Int]) => collect += x)
+    StateMachine[Id].run(pat, (1, 1), Seq(event), pat.initialState(), (x: IdxValue[Int]) => collect += x)
 
     // Instantiate an output state manually
     val eventsQueue = PQueue(IdxValue(0, 0, Result.succ(0)))

@@ -11,7 +11,7 @@ import ru.itclover.tsp.core.{Pattern, StateMachine}
 object PatternMemoryCheck {
 
   private def runAndReturnFinalState[A, S](pattern: Pattern[A, S, _], events: Seq[A], groupSize: Int) = {
-    StateMachine[Id].run(pattern, events, pattern.initialState(), groupSize = groupSize)
+    StateMachine[Id].run(pattern, (1, 1), events, pattern.initialState(), groupSize = groupSize)
   }
 
   private def generateSeq(generator: TimeSeriesGenerator[Int], amount: Int) = {

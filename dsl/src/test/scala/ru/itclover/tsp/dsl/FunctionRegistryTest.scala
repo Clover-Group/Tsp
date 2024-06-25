@@ -186,6 +186,44 @@ class FunctionRegistryTest extends AnyFlatSpec with Matchers with ScalaCheckProp
     }
   }
 
+  "String-string functions" should "be callable" in {
+
+    val input = List(
+      ("jsonobjectvalue", Seq("""{"1": 100, "2": 200}""", "2")),
+      ("jsonobjectvalue", Seq("""{"1": 100, "2": 200, "3": "300"}""", "3")),
+      ("jsonobjectvalue", Seq("""{"1": 100, "2": 200}""", "42")),
+      ("jsonobjectvalue", Seq("notanobject", "key"))
+    )
+
+    val output = List("200", "300", "", "")
+
+    (input, output).zipped.map { (in, out) =>
+      funReg.functions((in._1, Seq(StringASTType, StringASTType)))._1(in._2.map(Result.succ(_))) shouldBe Result.succ(
+        out
+      )
+    }
+  }
+
+  "String-int functions" should "be callable" in {
+
+    val input = List(
+      ("jsonarrayvalue", Seq("[1, 2, 3, 4, 5]", 2)),
+      ("jsonarrayvalue", Seq("""[1, "2", 3, "4", 5]""", 4)),
+      ("jsonarrayvalue", Seq("[1, 2, 3, 4, 5]", -3)),
+      ("jsonarrayvalue", Seq("[1, 2, 3, 4, 5]", 42)),
+      ("jsonarrayvalue", Seq("[1, 2, 3, 4, 5]", 0)),
+      ("jsonarrayvalue", Seq("notanarray", 48))
+    )
+
+    val output = List("2", "4", "3", "", "", "")
+
+    (input, output).zipped.map { (in, out) =>
+      funReg.functions((in._1, Seq(StringASTType, IntASTType)))._1(in._2.map(Result.succ(_))) shouldBe Result.succ(
+        out
+      )
+    }
+  }
+
   // "Function registry concatenation" should "work" in {
   //  // currently no other registries exist
   //  funReg ++ funReg shouldBe funReg

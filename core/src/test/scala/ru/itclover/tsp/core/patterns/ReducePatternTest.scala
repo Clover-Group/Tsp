@@ -52,7 +52,7 @@ class ReducePatternTest extends AnyWordSpec with Matchers {
         )
 
       val collect = new ArrayBuffer[IdxValue[Int]]()
-      StateMachine[Id].run(pattern, events, pattern.initialState(), (x: IdxValue[Int]) => collect += x)
+      StateMachine[Id].run(pattern, (1, 1), events, pattern.initialState(), (x: IdxValue[Int]) => collect += x)
 
       // returns 1 interval (due to fusing on enqueue)
       collect.size shouldBe 1
@@ -71,7 +71,7 @@ class ReducePatternTest extends AnyWordSpec with Matchers {
         )
 
       val collect = new ArrayBuffer[IdxValue[Int]]()
-      StateMachine[Id].run(pattern, events, pattern.initialState(), (x: IdxValue[Int]) => collect += x)
+      StateMachine[Id].run(pattern, (1, 1), events, pattern.initialState(), (x: IdxValue[Int]) => collect += x)
 
       // returns 2 intervals
       collect.nonEmpty shouldBe true

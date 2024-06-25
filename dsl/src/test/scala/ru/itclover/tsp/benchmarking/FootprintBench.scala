@@ -29,7 +29,8 @@ class FootprintBench extends AnyFlatSpec with Matchers {
     val sm = StateMachine[Id]
     val initialState = pattern.initialState()
     val collect = new ArrayBuffer[(Long, Long)](events.size)
-    val _ = sm.run(pattern, events, initialState, (x: IdxValue[T]) => { val _ = collect += (x.start -> x.end) }, 1000)
+    val _ =
+      sm.run(pattern, (1, 2), events, initialState, (x: IdxValue[T]) => { val _ = collect += (x.start -> x.end) }, 1000)
     val time = (System.nanoTime() - start) / 1000000
     println(time)
     time

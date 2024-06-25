@@ -69,7 +69,8 @@ trait RoutesProtocols extends SprayJsonSupport with DefaultJsonProtocol {
       "fieldsTimeoutsMs",
       "valueColumnMapping",
       "defaultTimeout",
-      "regularityInterval"
+      "regularityInterval",
+      "startOutputFrom"
     )
 
   implicit def wdfFormat[Event, EKey: JsonFormat, EValue: JsonFormat]

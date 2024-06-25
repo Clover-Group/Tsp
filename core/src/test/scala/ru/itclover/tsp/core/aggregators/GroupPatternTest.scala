@@ -40,7 +40,7 @@ class GroupPatternTest extends AnyWordSpec with Matchers {
       val groupPattern = GroupPattern(innerPattern, 10.seconds).map(_.sum)
 
       val collect = new ArrayBuffer[IdxValue[Int]]()
-      StateMachine[Id].run(groupPattern, events, groupPattern.initialState(), (x: IdxValue[Int]) => collect += x)
+      StateMachine[Id].run(groupPattern, (1, 1), events, groupPattern.initialState(), (x: IdxValue[Int]) => collect += x)
 
       // 10 intervals due to fusing on enqueue
       collect.size shouldBe 10
@@ -66,7 +66,7 @@ class GroupPatternTest extends AnyWordSpec with Matchers {
         yield Event[Int](time.toEpochMilli, idx.toLong, row.toInt, 0)).run(seconds = 5)
 
       val collect = new ArrayBuffer[IdxValue[_]]()
-      StateMachine[Id].run(pattern, events, pattern.initialState(), (x: IdxValue[_]) => collect += x)
+      StateMachine[Id].run(pattern, (1, 1), events, pattern.initialState(), (x: IdxValue[_]) => collect += x)
 
       var counter = 0
 
@@ -95,7 +95,7 @@ class GroupPatternTest extends AnyWordSpec with Matchers {
         yield Event[Int](time.toEpochMilli, idx.toLong, row.toInt, 0)).run(seconds = 5)
 
       val collect = new ArrayBuffer[IdxValue[_]]()
-      StateMachine[Id].run(pattern, events, pattern.initialState(), (x: IdxValue[_]) => collect += x)
+      StateMachine[Id].run(pattern, (1, 1), events, pattern.initialState(), (x: IdxValue[_]) => collect += x)
 
       collect.foreach(item => {
         item.value.isFail shouldBe true

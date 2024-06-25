@@ -36,7 +36,8 @@ class PreviousValueTest extends AnyWordSpec with Matchers {
       val previousPattern = PreviousValue(field(_.row), 10.seconds)
 
       val collect = new ArrayBuffer[IdxValue[Int]]()
-      StateMachine[Id].run(previousPattern, events, previousPattern.initialState(), (x: IdxValue[Int]) => collect += x)
+      StateMachine[Id]
+        .run(previousPattern, (1, 1), events, previousPattern.initialState(), (x: IdxValue[Int]) => collect += x)
 
       collect.size shouldBe 90
       collect.foreach(idxv => idxv.value.map(value => value + 10 shouldBe idxv.start).getOrElse(true shouldBe false))
@@ -47,7 +48,8 @@ class PreviousValueTest extends AnyWordSpec with Matchers {
       val previousPattern = PreviousValue(pat.assert(const(0).equiv(const(1))), 10.seconds) // inner pattern returns Fals
 
       val collect = new ArrayBuffer[IdxValue[Unit]]()
-      StateMachine[Id].run(previousPattern, events, previousPattern.initialState(), (x: IdxValue[Unit]) => collect += x)
+      StateMachine[Id]
+        .run(previousPattern, (1, 1), events, previousPattern.initialState(), (x: IdxValue[Unit]) => collect += x)
 
       collect.size shouldBe 0
 

@@ -19,7 +19,7 @@ class ATPGTest extends AnyFlatSpec with Matchers {
     val pat = ConstPattern[EInt, Int](Result.succ(testNum))
 
     // Assertion
-    StateMachine[Id].run(pat, Seq(ev), pat.initialState())
+    StateMachine[Id].run(pat, (1, 1), Seq(ev), pat.initialState())
 // todo check something
   }
 
