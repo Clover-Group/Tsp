@@ -18,7 +18,7 @@ trait InputConf[Event, EKey, EItem] extends Serializable {
 
   def timestampMultiplier: Option[Double]
 
-  def writeTimeLogs: Boolean
+  def writeTimeLogs: Option[Boolean]
 
   // Set maximum number of physically independent partitions for stream.keyBy operation
   def maxPartitionsParallelism: Int = 8192
