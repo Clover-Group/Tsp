@@ -36,7 +36,8 @@ class StateMachine[F[_]: Monad: Traverse] {
     events: Iterable[Event],
     seedState: State,
     consume: IdxValue[Out] => F[Unit] = (_: IdxValue[Out]) => Monad[F].pure(()),
-    groupSize: Int = 100000
+    groupSize: Int = 100000,
+    writeTimeLogs: Boolean = false
   ): F[State] = {
 
     var counter = 0
@@ -64,7 +65,9 @@ class StateMachine[F[_]: Monad: Traverse] {
       }
     val end = System.nanoTime()
 
-    log.info(s"Pattern $patternIdAndSubunit: processed $counter rows for ${(end - start) / 1e6} milliseconds")
+    if (writeTimeLogs) {
+      log.debug(s"Pattern $patternIdAndSubunit: processed $counter rows for ${(end - start) / 1e6} milliseconds")
+    }
     finalState
   }
 

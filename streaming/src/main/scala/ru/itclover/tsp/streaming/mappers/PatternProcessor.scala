@@ -12,7 +12,8 @@ case class PatternProcessor[E: TimeExtractor, State, Out](
   pattern: Pattern[E, State, Out],
   patternIdAndSubunit: (Int, Int),
   eventsMaxGapMs: Long,
-  initialState: () => State
+  initialState: () => State,
+  writeTimeLogs: Boolean
 ) {
 
   private val log = Logger("PatternLogger")
@@ -51,7 +52,7 @@ case class PatternProcessor[E: TimeExtractor, State, Out](
     // this step has side-effect = it calls `consume` for each output event. We need to process
     // events sequentually, that's why I use foldLeft here
     lastState = sequences.zip(seedStates).foldLeft(initialState()) { case (_, (events, seedState)) =>
-      machine.run(pattern, patternIdAndSubunit, events, seedState, consume)
+      machine.run(pattern, patternIdAndSubunit, events, seedState, consume, writeTimeLogs = writeTimeLogs)
     }
 
     lastTime = elements.lastOption.map(timeExtractor(_)).getOrElse(Time(0))

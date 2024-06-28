@@ -18,7 +18,8 @@ case class KafkaInputConf(
   chunkSizeMs: Option[Long] = Some(10L),
   processingBatchSize: Option[Int],
   numParallelSources: Option[Int] = Some(1),
-  fieldsTypes: Map[String, String]
+  fieldsTypes: Map[String, String],
+  writeTimeLogs: Boolean = false
 ) extends InputConf[RowWithIdx, String, Any] {
 
   def defaultEventsGapMs: Option[Long] = Some(0L)

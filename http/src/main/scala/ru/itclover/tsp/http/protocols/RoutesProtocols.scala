@@ -128,10 +128,11 @@ trait RoutesProtocols extends SprayJsonSupport with DefaultJsonProtocol {
     "parallelism",
     "numParallelSources",
     "patternsParallelism",
-    "timestampMultiplier"
+    "timestampMultiplier",
+    "writeTimeLogs"
   )
 
-  implicit val kafkaInpConfFmt: RootJsonFormat[KafkaInputConf] = jsonFormat15(
+  implicit val kafkaInpConfFmt: RootJsonFormat[KafkaInputConf] = jsonFormat16(
     KafkaInputConf.apply
   )
 

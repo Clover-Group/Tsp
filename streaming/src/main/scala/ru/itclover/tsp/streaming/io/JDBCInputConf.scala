@@ -52,7 +52,8 @@ case class JDBCInputConf(
   parallelism: Option[Int] = Some(1),
   numParallelSources: Option[Int] = Some(1),
   patternsParallelism: Option[Int] = Some(1),
-  timestampMultiplier: Option[Double] = Some(1000.0)
+  timestampMultiplier: Option[Double] = Some(1000.0),
+  writeTimeLogs: Boolean = false
 ) extends InputConf[RowWithIdx, String, Any] {
 
   def fixedDriverName: String = driverName match {
