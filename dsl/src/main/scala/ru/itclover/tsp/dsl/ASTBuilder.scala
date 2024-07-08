@@ -74,7 +74,7 @@ class ASTBuilder(
   }
 
   def trileanFactor: Rule1[AST] = rule {
-    waitRule | booleanExpr ~> { (b: AST) => Assert(b) } | '(' ~ trileanExpr ~ ')' ~ ws 
+    waitRule | booleanFactor ~> { (b: AST) => Assert(b) } | '(' ~ trileanExpr ~ ')' ~ ws 
   }
 
   def booleanExpr: Rule1[AST] = rule {

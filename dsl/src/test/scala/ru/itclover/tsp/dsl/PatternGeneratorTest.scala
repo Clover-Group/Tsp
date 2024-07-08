@@ -112,4 +112,22 @@ class PatternGeneratorTest extends AnyFlatSpec with Matchers with ScalaCheckProp
       })
   }
 
+  "Wait/and/or operators" should "work in all orders" in {
+
+    val patternsList = List(
+      "wait(10 sec, doubleSensor1 > 0 for 10 sec) and doubleSensor2 > 10",
+      "doubleSensor2 > 10 and wait(10 sec, doubleSensor1 > 0 for 10 sec)",
+      "wait(10 sec, doubleSensor1 > 0 for 10 sec) or doubleSensor2 > 10",
+      "doubleSensor2 > 10 or wait(10 sec, doubleSensor1 > 0 for 10 sec)"
+    )
+
+    patternsList
+      .foreach(pattern =>
+        gen
+          .build(pattern, 0.0, 1000L, fieldsClasses)
+          .right
+          .value shouldBe a[(_, PatternMetadata)]
+      )
+  }
+
 }
