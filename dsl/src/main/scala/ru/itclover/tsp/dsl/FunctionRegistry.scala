@@ -381,12 +381,12 @@ object DefaultFunctions extends LazyLogging {
       ("jsonarrayvalue", Seq(StringASTType, IntASTType)) -> (
         (
           (xs: Seq[Any]) =>
-            (toResult[String](xs(0)), toResult[Int](xs(1))) match {
+            (toResult[String](xs(0)), toResult[Double](xs(1))) match {
               case (Succ(t0), Succ(t1)) =>
                 Result.succ(
                   Try {
                     val elems = t0.parseJson.asInstanceOf[JsArray].elements
-                    val index = if (t1 > 0) t1 - 1 else elems.length + t1
+                    val index = (if (t1 > 0) t1 - 1 else elems.length + t1).toInt
                     elems(index).convertTo[String](JsonStringReader)
                   }.recoverWith { ex =>
                     log.warn(
