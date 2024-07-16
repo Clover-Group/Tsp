@@ -18,6 +18,7 @@ key             |       String      | name of the column containing keys
 value           |       String      | name of the column containing values
 fieldsTimeoutsMs|Map\[String, Long\]| expiration timeouts for each key
 defaultTimeout  |        Long       | default timeout for keys not specified in `fieldsTimeoutsMs`
+startOutputFrom |       Double      | timestamp for actual data output start (e. g. for collecting all sensors data)
 
 
 #### Example

@@ -165,6 +165,25 @@ E.g. `avgOf(x1, x2, x3, _ > 0)` will return `(x1 + x2 + x3) / 3` if
 all of `x1`, `x2`, `x3` are positive, or `(x1 + x2) / 2` if only
 `x1` and `x2` are, etc.
 - `sumOf`, `countOf`, `minOf`, `maxOf` work analogously
+#### String functions
+- `json->>key` or `jsonobjectvalue(json, key)` parses `json` as JSON object and returns the
+data associated with the `key` (always as string, use `cast` to convert to other desired type)
+- `json->index` or `jsonarrayvalue(json, index)` parses `json` as JSON array and returns the
+data by the `index` (always as string, use cast instruction to convert to other desired type)
 
+_Note: The indices always start with 1, not 0. Negative indices (from -1 onwards) may be used_
+_to access elements from the end. Zero index is not defined at all._
+
+Both functions return empty string in case of any invalid argument 
+(e. g. `json` not being a valid JSON object/string).
+
+
+### Cast instruction
+`<expr> as <type>` converts `expr` to `type`. Available types are: 
+`int32`, `int64`, `float64`, `boolean`, `string`.
+When casting a string to `boolean`, the following convention is used:
+- `'1'`, `'true'`, `'yes'` or `'on'` converts to Boolean `true`
+- `'0'`, `'false'`, `'no'` or `'off'` converts to Boolean `false`
+- the conversion is case-insensitive.
 
 [^1]: all keywords are case insensitive
