@@ -82,6 +82,8 @@ mappings in Docker := {
 
 scriptClasspath := Seq((assemblyJarName in (assembly in mainRunner)).value)
 
+
+
 // clear the existing docker commands
 dockerCommands := Seq()
 

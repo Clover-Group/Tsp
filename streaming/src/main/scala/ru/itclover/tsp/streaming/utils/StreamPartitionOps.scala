@@ -21,7 +21,7 @@ object StreamPartitionOps {
               .get(key)
               .fold {
                 for {
-                  newQ <- Queue.bounded[F, Option[A]](10000) // Create a new queue
+                  newQ <- Queue.bounded[F, Option[A]](100000) // Create a new queue
                   _    <- st.modify(x => (x + (key -> newQ), x)) // Update the ref of queues
                   _    <- newQ.offer(el.some)
                 } yield (key -> fs2.Stream.fromQueueNoneTerminated(newQ)).some
