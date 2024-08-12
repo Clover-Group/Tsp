@@ -6,7 +6,7 @@ import java.time.{Duration, Instant, ZoneId}
 
 import scala.math.Ordering.Long
 
-case class Time(toMillis: Long) extends Serializable {
+case class Time(toMillis: Long) extends AnyVal with Serializable {
   def plus(window: Window): Time = Time(toMillis + window.toMillis)
   def minus(window: Window): Time = Time(toMillis - window.toMillis)
 

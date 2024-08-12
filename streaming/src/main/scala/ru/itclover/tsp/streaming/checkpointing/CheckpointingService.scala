@@ -8,6 +8,11 @@ import ru.itclover.tsp.core.optimizations.Optimizer.{S => State}
 
 import scala.collection.mutable
 import ru.itclover.tsp.core.optimizations.Optimizer
+import org.redisson.codec.JsonJacksonCodec
+import java.time.Duration
+import java.util.concurrent.ScheduledThreadPoolExecutor
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.ScheduledFuture
 
 trait CheckpointingService {
   def updateCheckpointRead(uuid: String, newRowsRead: Long, newStates: Map[RawPattern, State[Segment]]): Unit
@@ -19,6 +24,7 @@ trait CheckpointingService {
   def getCheckpoint(uuid: String): Option[Checkpoint]
 
   def removeCheckpointAndState(uuid: String): Unit
+  def setCheckpointAndStateExpirable(uuid: String): Unit
 }
 
 case class RedisCheckpointingService(redisUri: String) extends CheckpointingService {
@@ -26,6 +32,8 @@ case class RedisCheckpointingService(redisUri: String) extends CheckpointingServ
   val redisConfig = new Config()
 
   val log = Logger("RedisCheckpointing")
+
+  val codec = new JsonJacksonCodec()
 
   redisConfig
     .useSingleServer()
@@ -42,8 +50,8 @@ case class RedisCheckpointingService(redisUri: String) extends CheckpointingServ
   ): Unit = {
     val lock = redissonClient.getLock(uuid)
     lock.lock()
-    val checkpointBucket = redissonClient.getBucket[Checkpoint](s"tsp-cp-$uuid")
-    val checkpoint = Option(checkpointBucket.get).getOrElse(Checkpoint(0, List.empty))
+    val checkpointBucket = redissonClient.getBucket[Checkpoint](s"tsp-cp-$uuid", codec)
+    val checkpoint = Option(checkpointBucket.get).getOrElse(Checkpoint(0, Array.empty))
     val newCheckpoint = checkpoint.copy(
       readRows = checkpoint.readRows + newRowsRead
     )
@@ -57,7 +65,7 @@ case class RedisCheckpointingService(redisUri: String) extends CheckpointingServ
   override def updateCheckpointWritten(uuid: String, sinkIdx: Int, newRowsWritten: Long): Unit = {
     val lock = redissonClient.getLock(uuid)
     lock.lock()
-    val checkpointBucket = redissonClient.getBucket[Checkpoint](s"tsp-cp-$uuid")
+    val checkpointBucket = redissonClient.getBucket[Checkpoint](s"tsp-cp-$uuid", codec)
     val checkpoint = checkpointBucket.get()
 
     val writtenRows = checkpoint.writtenRows.padTo(sinkIdx + 1, 0L)
@@ -70,21 +78,29 @@ case class RedisCheckpointingService(redisUri: String) extends CheckpointingServ
   }
 
   override def getCheckpointAndState(uuid: String): (Option[Checkpoint], Option[CheckpointState]) = {
-    val checkpointBucket = redissonClient.getBucket[Checkpoint](s"tsp-cp-$uuid")
+    val checkpointBucket = redissonClient.getBucket[Checkpoint](s"tsp-cp-$uuid", codec)
     val checkpointStateBucket = redissonClient.getBucket[CheckpointState](s"tsp-cp-$uuid-state")
+    log.warn(s"Restored checkpoint: ${checkpointBucket.get()}")
     (Option(checkpointBucket.get()), Option(checkpointStateBucket.get()))
   }
 
   override def getCheckpoint(uuid: String): Option[Checkpoint] = {
-    val checkpointBucket = redissonClient.getBucket[Checkpoint](s"tsp-cp-$uuid")
+    val checkpointBucket = redissonClient.getBucket[Checkpoint](s"tsp-cp-$uuid", codec)
     Option(checkpointBucket.get())
   }
 
   override def removeCheckpointAndState(uuid: String): Unit = {
-    val checkpointBucket = redissonClient.getBucket[Checkpoint](s"tsp-cp-$uuid")
+    val checkpointBucket = redissonClient.getBucket[Checkpoint](s"tsp-cp-$uuid", codec)
     val checkpointStateBucket = redissonClient.getBucket[CheckpointState](s"tsp-cp-$uuid-state")
     checkpointBucket.delete()
     checkpointStateBucket.delete()
+  }
+
+  override def setCheckpointAndStateExpirable(uuid: String): Unit = {
+    val checkpointBucket = redissonClient.getBucket[Checkpoint](s"tsp-cp-$uuid", codec)
+    val checkpointStateBucket = redissonClient.getBucket[CheckpointState](s"tsp-cp-$uuid-state")
+    checkpointBucket.getAndExpire(Duration.ofHours(3))
+    checkpointStateBucket.getAndExpire(Duration.ofHours(3))
   }
 
 }
@@ -92,9 +108,11 @@ case class RedisCheckpointingService(redisUri: String) extends CheckpointingServ
 case class MemoryCheckpointingService() extends CheckpointingService {
 
   val log = Logger("MemoryCheckpointing")
+  val scheduler = new ScheduledThreadPoolExecutor(8)
 
   private val checkpoints: mutable.Map[String, Checkpoint] = mutable.Map.empty
   private val checkpointStates: mutable.Map[String, CheckpointState] = mutable.Map.empty
+  private val checkpointFutures: mutable.Map[String, ScheduledFuture[?]] = mutable.Map.empty
 
   override def updateCheckpointRead(
     uuid: String,
@@ -102,7 +120,7 @@ case class MemoryCheckpointingService() extends CheckpointingService {
     newStates: Map[RawPattern, Optimizer.S[Segment]]
   ): Unit = {
     checkpoints.synchronized {
-      val checkpoint = checkpoints.getOrElse(uuid, Checkpoint(0, List.empty))
+      val checkpoint = checkpoints.getOrElse(uuid, Checkpoint(0, Array.empty))
       val newCheckpoint = checkpoint.copy(
         readRows = checkpoint.readRows + newRowsRead
       )
@@ -114,7 +132,7 @@ case class MemoryCheckpointingService() extends CheckpointingService {
 
   override def updateCheckpointWritten(uuid: String, sinkIdx: Int, newRowsWritten: Long): Unit = {
     checkpoints.synchronized {
-      val checkpoint = checkpoints.getOrElse(uuid, Checkpoint(0, List.empty))
+      val checkpoint = checkpoints.getOrElse(uuid, Checkpoint(0, Array.empty))
 
       val writtenRows = checkpoint.writtenRows.padTo(sinkIdx + 1, 0L)
       val updatedWrittenRows = writtenRows.updated(sinkIdx, writtenRows(sinkIdx) + newRowsWritten)
@@ -133,6 +151,22 @@ case class MemoryCheckpointingService() extends CheckpointingService {
   override def removeCheckpointAndState(uuid: String): Unit = {
     checkpoints.remove(uuid)
     checkpointStates.remove(uuid)
+    checkpointFutures.get(uuid).map(_.cancel(true))
+  }
+
+  override def setCheckpointAndStateExpirable(uuid: String): Unit = {
+    // TODO: Expirable?
+    checkpointFutures(uuid) = scheduler.schedule(
+      new Runnable {
+        def run() = {
+          checkpoints.remove(uuid)
+          checkpointStates.remove(uuid)
+          ()
+        }
+      },
+      3,
+      TimeUnit.HOURS
+    )
   }
 
 }
@@ -166,5 +200,8 @@ object CheckpointingService {
 
   def removeCheckpointAndState(uuid: String): Unit =
     service.map(_.removeCheckpointAndState(uuid)).getOrElse(())
+
+  def setCheckpointAndStateExpirable(uuid: String): Unit =
+    service.map(_.setCheckpointAndStateExpirable(uuid)).getOrElse(())
 
 }

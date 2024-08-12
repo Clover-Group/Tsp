@@ -249,7 +249,7 @@ class JobRunService(id: String, blockingExecutionContext: ExecutionContextExecut
         case Left(throwable) =>
           log.error(s"Job $uuid failed: $throwable")
           CoordinatorService.notifyJobCompleted(uuid, Some(throwable))
-          CheckpointingService.removeCheckpointAndState(uuid)
+          CheckpointingService.setCheckpointAndStateExpirable(uuid)
           runningStreams.remove(uuid)
           runningJobsRequests.remove(uuid)
         case Right(_) =>
