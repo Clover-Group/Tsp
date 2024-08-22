@@ -44,6 +44,7 @@ case class JDBCInputConf(
   chunkSizeMs: Option[Long],
   processingBatchSize: Option[Int],
   partitionFields: Seq[String],
+  additionalFields: Option[Seq[String]] = None,
   unitIdField: Option[String] = None,
   userName: Option[String] = None,
   password: Option[String] = None,

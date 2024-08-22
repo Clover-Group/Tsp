@@ -3,6 +3,7 @@ package ru.itclover.tsp.streaming.io
 trait InputConf[Event, EKey, EItem] extends Serializable {
   def datetimeField: String
   def partitionFields: Seq[String]
+  def additionalFields: Option[Seq[String]] // Fields which are stored in an incident but not subject to partitioning
   def unitIdField: Option[String] // Only for new sink, will be ignored for old
 
   def parallelism: Option[Int] // Parallelism per each source

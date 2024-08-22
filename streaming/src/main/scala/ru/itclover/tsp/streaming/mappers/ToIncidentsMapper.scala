@@ -12,12 +12,15 @@ final case class ToIncidentsMapper[E, EKey, EItem](
   subunit: Int,
   patternMetadata: Map[String, String],
   sessionWindowMs: Long,
-  partitionFields: Seq[EKey]
+  partitionFields: Seq[EKey],
+  additionalFields: Seq[EKey]
 )(implicit extractor: Extractor[E, EKey, EItem], decoder: Decoder[EItem, Any]) {
 
   def apply(event: E): Segment => Incident = {
     val partitionFieldsValues: Seq[(EKey, Any)] =
       partitionFields.map(f => f -> extractor[Any](event, f))
+    val additionalFieldsValues: Seq[(EKey, Any)] =
+      additionalFields.map(f => f -> extractor[Any](event, f))
     val incidentId = s"P#$patternId;" + partitionFieldsValues.mkString
     val unit = Try(extractor[Any](event, unitIdField).toString.toInt).getOrElse(Int.MinValue)
     segment =>
@@ -30,7 +33,8 @@ final case class ToIncidentsMapper[E, EKey, EItem](
         unit,
         subunit,
         patternMetadata,
-        partitionFieldsValues.map { case (k, v) => (k.toString, v.toString) }.toMap
+        partitionFieldsValues.map { case (k, v) => (k.toString, v.toString) }.toMap,
+        additionalFieldsValues.map { case (k, v) => (k.toString, v.toString) }.toMap
       )
   }
 

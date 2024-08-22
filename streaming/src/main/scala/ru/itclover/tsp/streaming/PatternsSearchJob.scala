@@ -118,7 +118,8 @@ case class PatternsSearchJob[In: EventToList, InKey, InItem](
           rawP.subunit.getOrElse(0),
           rawP.metadata.getOrElse(Map.empty),
           source.conf.defaultEventsGapMs.getOrElse(2000L),
-          source.conf.partitionFields.map(source.fieldToEKey)
+          source.conf.partitionFields.map(source.fieldToEKey),
+          source.conf.additionalFields.getOrElse(Seq.empty).map(source.fieldToEKey)
         )
 
         val optimizedPattern = new Optimizer[In].optimize(pattern)

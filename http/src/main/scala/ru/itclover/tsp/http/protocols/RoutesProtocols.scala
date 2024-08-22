@@ -120,6 +120,7 @@ trait RoutesProtocols extends SprayJsonSupport with DefaultJsonProtocol {
     "chunkSizeMs",
     "processingBatchSize",
     "partitionFields",
+    "additionalFields",
     "unitIdField",
     "userName",
     "password",
@@ -132,7 +133,7 @@ trait RoutesProtocols extends SprayJsonSupport with DefaultJsonProtocol {
     "writeTimeLogs"
   )
 
-  implicit val kafkaInpConfFmt: RootJsonFormat[KafkaInputConf] = jsonFormat16(
+  implicit val kafkaInpConfFmt: RootJsonFormat[KafkaInputConf] = jsonFormat17(
     KafkaInputConf.apply
   )
 

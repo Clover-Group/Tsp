@@ -74,13 +74,19 @@ case class PatternsToRowMapper[Event, EKey](schema: EventSchema) {
       r.replace(s"$$PartitionFieldsValues@$k", v)
     }
 
-    replacedPFV
+    // Replace additional fields values
+    val replacedAFV = incident.additionalFieldsValues.foldLeft(replacedPFV) { case (r, (k, v)) =>
+      r.replace(s"$$PartitionFieldsValues@$k", v)
+    }
+
+    replacedAFV
       .replace(
         "$PatternMetadataAndPartitionFieldsValues",
-        (incident.patternMetadata ++ incident.partitionFieldsValues).toJson.compactPrint
+        (incident.patternMetadata ++ incident.partitionFieldsValues ++ incident.additionalFieldsValues).toJson.compactPrint
       )
       .replace("$PatternMetadata", incident.patternMetadata.toJson.compactPrint)
       .replace("$PartitionFieldsValues", incident.partitionFieldsValues.toJson.compactPrint)
+      .replace("$AdditionalFieldsValues", incident.additionalFieldsValues.toJson.compactPrint)
   }
 
   def convertFromInt(value: Long, toType: String): Any = {
