@@ -82,7 +82,7 @@ case class WaitAccumState[T](windowQueue: m.ArrayDeque[(Idx, Time)], lastIndex: 
       // first, add the new element to the queue
       windowQueue.addOne((idx, time))
       // take outdated elements from the window queue
-      val (outputs, updatedWindowQueue) = takeWhileFromQueue(windowQueue)(_._2.plus(window) < time)
+      val (outputs, updatedWindowQueue) = takeWhileFromQueue(windowQueue)(_._2.plus(window) <= time)
       if (outputs.nonEmpty) {
         // set the new last index if there are outputs (i.e. there is something to return)
         (
