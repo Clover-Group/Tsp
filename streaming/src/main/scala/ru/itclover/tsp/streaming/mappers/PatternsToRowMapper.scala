@@ -68,15 +68,16 @@ case class PatternsToRowMapper[Event, EKey](schema: EventSchema) {
     val replacedMetadataKeys = incident.patternMetadata.foldLeft(replaced) { case (r, (k, v)) =>
       r.replace(s"$$PatternMetadata@$k", v)
     }
+    val replacedMetadata = """\$PatternMetadata@\w+""".r.replaceAllIn(replacedMetadataKeys, _ => "")
 
     // Replace partition fields values
-    val replacedPFV = incident.partitionFieldsValues.foldLeft(replacedMetadataKeys) { case (r, (k, v)) =>
+    val replacedPFV = incident.partitionFieldsValues.foldLeft(replacedMetadata) { case (r, (k, v)) =>
       r.replace(s"$$PartitionFieldsValues@$k", v)
     }
 
     // Replace additional fields values
     val replacedAFV = incident.additionalFieldsValues.foldLeft(replacedPFV) { case (r, (k, v)) =>
-      r.replace(s"$$PartitionFieldsValues@$k", v)
+      r.replace(s"$$PartitionFieldsValues@$k", v).replace(s"$$AdditionalFieldsValues@$k", v)
     }
 
     replacedAFV
@@ -123,11 +124,11 @@ case class PatternsToRowMapper[Event, EKey](schema: EventSchema) {
 
   def convertFromString(value: String, toType: String): Any = {
     toType match {
-      case "int8"    => value.toByte
-      case "int16"   => value.toShort
-      case "int32"   => value.toInt
-      case "int64"   => value.toLong
-      case "boolean" => value != "0" && value != "false" && value != "off"
+      case "int8"    => Try(value.toByte).getOrElse(0.toByte)
+      case "int16"   => Try(value.toShort).getOrElse(0.toShort)
+      case "int32"   => Try(value.toInt).getOrElse(0.toInt)
+      case "int64"   => Try(value.toLong).getOrElse(0.toLong)
+      case "boolean" => Try(value != "0" && value != "false" && value != "off").getOrElse(false)
       case "string"  => value
       case "float32" => Try(value.toFloat).orElse(Try(Timestamp.valueOf(value).getTime() / 1000.0f)).getOrElse(Float.NaN)
       case "float64" =>
