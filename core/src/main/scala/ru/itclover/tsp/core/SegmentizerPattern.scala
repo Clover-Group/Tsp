@@ -14,12 +14,13 @@ case class SegmentizerPattern[Event, T, InnerState](inner: Pattern[Event, InnerS
 //todo tests
 
   @tailrec
-  private def inner(q: QI[T], last: IdxValue[T], resultQ: QI[T]): QI[T] = {
+  private def inner(q: QI[T], last: IdxValue[T], resultQ: QI[T]): (QI[T], Boolean) = {
     q.dequeueOption() match {
-      case None => resultQ.enqueue(last)
+      case None => (resultQ.enqueue(last), last.value.isWait)
       case Some((head, tail)) => {
-        if (head.value.equals(last.value)) {
-          inner(tail, last.copy(end = head.end), resultQ)
+        // Any value should be united with the previous Wait value
+        if (head.value.equals(last.value) || last.value.isWait) {
+          inner(tail, head.copy(start = last.start), resultQ)
         } else {
           inner(tail, head, resultQ.enqueue(last))
         }
@@ -37,13 +38,15 @@ case class SegmentizerPattern[Event, T, InnerState](inner: Pattern[Event, InnerS
         innerQueue.dequeueOption() match {
           case None => oldState.copy(innerState = innerResult) -> queue
           case Some((head, tail)) =>
-            val newQueue = inner(tail, head, queue) // do not inline!
-            SegmentizerPState(innerResult, PQueue.empty[T]) -> newQueue
+            val (newQueue, lastWait) = inner(tail, head, queue) // do not inline!
+            SegmentizerPState(innerResult, PQueue.empty[T], lastWait) -> newQueue
         }
       }
     }
 
-  override def initialState(): SegmentizerPState[InnerState, T] = SegmentizerPState(inner.initialState(), PQueue.empty)
+  override def initialState(): SegmentizerPState[InnerState, T] =
+    SegmentizerPState(inner.initialState(), PQueue.empty, false)
+
 }
 
-case class SegmentizerPState[InnerState, T](innerState: InnerState, innerQueue: QI[T])
+case class SegmentizerPState[InnerState, T](innerState: InnerState, innerQueue: QI[T], lastWait: Boolean)

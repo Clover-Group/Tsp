@@ -1,3 +1,3 @@
 package ru.itclover.tsp.core
 
-case class Segment(from: Time, to: Time) extends Serializable
+case class Segment(from: Time, to: Time, isWait: Boolean) extends Serializable

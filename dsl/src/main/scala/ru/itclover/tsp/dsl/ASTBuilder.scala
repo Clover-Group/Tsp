@@ -62,7 +62,7 @@ class ASTBuilder(
   protected def buildForExpr(phase: AST, ti: TimeInterval, fromStart: Option[Boolean]): AST = if (
     fromStart.getOrElse(false)
   ) {
-    Wait(Timer(Assert(phase.asInstanceOf[AST]), ti, eventsMaxGapMs), Window(ti.max))
+    Waiter(Timer(Assert(phase.asInstanceOf[AST]), ti, eventsMaxGapMs), Window(ti.max))
   } else {
     Timer(Assert(phase.asInstanceOf[AST]), ti, eventsMaxGapMs)
   }
@@ -341,7 +341,7 @@ class ASTBuilder(
   def waitRule: Rule1[AST] = rule {
     (
       ignoreCase("wait") ~ ws ~ "(" ~ ws ~ time ~ ws ~ "," ~ ws ~ trileanExpr ~ ws ~ ")" ~ ws ~> ((w: Window, e: AST) =>
-        Wait(e, w)
+        Waiter(e, w)
       )
     )
   }

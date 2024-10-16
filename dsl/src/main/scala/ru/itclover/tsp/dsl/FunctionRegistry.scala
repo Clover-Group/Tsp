@@ -2,7 +2,7 @@ package ru.itclover.tsp.dsl
 
 import java.io.Serializable
 import com.typesafe.scalalogging.LazyLogging
-import ru.itclover.tsp.core.{Fail, Result, Succ}
+import ru.itclover.tsp.core.{Fail, Result, Succ, Wait}
 
 import scala.reflect.ClassTag
 import scala.util.Try
@@ -320,6 +320,24 @@ object DefaultFunctions extends LazyLogging {
             case "neq" => Result.succ(l.neq(x0, x1))
             case _     => Result.fail
           }
+        case (Wait, Fail) | (Fail, Wait) =>
+          sym match {
+            case "or" => Result.wait
+            case _    => Result.fail
+          }
+        case (Succ(x0), Wait) =>
+          sym match {
+            case "and" => if (x0) Result.wait else Result.fail
+            case "or"  => if (x0) Result.succ(x0) else Result.wait
+            case _     => Result.wait
+          }
+        case (Wait, Succ(x1)) =>
+          sym match {
+            case "and" => if (x1) Result.wait else Result.fail
+            case "or"  => if (x1) Result.succ(x1) else Result.wait
+            case _     => Result.wait
+          }
+        case (Wait, Wait) => Result.wait
         case (Succ(x0), Fail) =>
           sym match {
             case "not" => Result.succ(l.not(x0))

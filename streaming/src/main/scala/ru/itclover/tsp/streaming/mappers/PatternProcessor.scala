@@ -7,8 +7,9 @@ import ru.itclover.tsp.core.{Time, _}
 
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
+import cats.implicits
 
-case class PatternProcessor[E: TimeExtractor, State, Out](
+case class PatternProcessor[E: TimeExtractor, State, Out: Merger](
   pattern: Pattern[E, State, Out],
   patternIdAndSubunit: (Int, Int),
   eventsMaxGapMs: Long,
@@ -45,7 +46,7 @@ case class PatternProcessor[E: TimeExtractor, State, Out](
 
     val data = mutable.ListBuffer.empty[Out]
 
-    val consume: IdxValue[Out] => Unit = x => x.value.foreach(v => data.append(v))
+    val consume: IdxValue[Out] => Unit = DataConsumer(data)
 
     val seedStates = lastState +: Stream.continually(initialState())
 
@@ -61,6 +62,44 @@ case class PatternProcessor[E: TimeExtractor, State, Out](
   }
 
   def getState: State = lastState
+}
+
+trait Merger[T] {
+  def isWaitState(item: T): Boolean
+  def merge(first: T, second: T): T
+}
+
+object IncidentMerger extends Merger[Incident] {
+  def isWaitState(item: Incident): Boolean = item.segment.isWait
+  def merge(first: Incident, second: Incident): Incident = IncidentInstances.semigroup.combine(first, second)
+}
+
+case class DataConsumer[Out](outBuffer: mutable.ListBuffer[Out])(implicit merger: Merger[Out])
+    extends (IdxValue[Out] => Unit) {
+  var waitState: Option[Out] = None
+
+  override def apply(idxValue: IdxValue[Out]) = idxValue match
+    case IdxValue(start, end, value) =>
+      waitState match
+        case None =>
+          value match
+            case Succ(t) =>
+              if (merger.isWaitState(t)) {
+                waitState = Some(t)
+              } else {
+                outBuffer.append(t)
+              }
+            case _ => /* do nothing */
+        case Some(wait) =>
+          value match
+            case Succ(t) =>
+              if (merger.isWaitState(t)) {
+                waitState = Some(merger.merge(wait, t))
+              } else {
+                outBuffer.append(merger.merge(wait, t))
+              }
+            case _ => waitState = None
+
 }
 
 object PatternProcessor {

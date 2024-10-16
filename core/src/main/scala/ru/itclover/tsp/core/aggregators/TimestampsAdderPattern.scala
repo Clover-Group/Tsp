@@ -33,8 +33,11 @@ protected case class TimestampAdderAccumState[T]() extends AccumState[T, Segment
   ): (TimestampAdderAccumState[T], QI[Segment]) = {
     if (times.isEmpty) (this, PQueue.empty)
     else {
-      val result = idxValue.map(_ => Succ(Segment(times.head._2, times.last._2)))
-      (TimestampAdderAccumState(), PQueue.apply(result))
+      val resultValue = idxValue.value match
+        case Fail    => Fail
+        case Wait    => Succ(Segment(times.head._2, times.last._2, true))
+        case Succ(_) => Succ(Segment(times.head._2, times.last._2, false))
+      (TimestampAdderAccumState(), PQueue.apply(idxValue.copy(value = resultValue)))
     }
   }
 

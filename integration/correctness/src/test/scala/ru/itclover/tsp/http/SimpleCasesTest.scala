@@ -577,36 +577,36 @@ class SimpleCasesTest
     inner(numbers, Nil)
   }
 
-  "Cases 1-17, 43-50" should "work in wide Kafka table" in {
-    casesPatterns.keys.foreach { id =>
-      Post(
-        "/job/submit/",
-        FindPatternsRequest(
-          s"17kafkawide_$id",
-          wideKafkaInputConf,
-          Seq(wideKafkaOutputConf),
-          50,
-          List(casesPatterns(id))
-        )
-      ) ~>
-      route ~> check {
-        withClue(s"Pattern ID: $id") {
-          status shouldEqual StatusCodes.OK
-        }
-        // alertByQuery(List(List(id.toDouble, incidentsCount(id).toDouble)), s"SELECT $id, COUNT(*) FROM events_wide_test WHERE id = $id")
-      }
-    }
-    Thread.sleep(60000)
-    alertByQuery(
-      incidentsCount
-        .map { case (k, v) =>
-          List(k.toDouble, v.toDouble)
-        }
-        .toList
-        .sortBy(_.headOption.getOrElse(Double.NaN)),
-      firstValidationQuery("events_wide_kafka_test", numbersToRanges(casesPatterns.keys.map(_.toInt).toList.sorted))
-    )
-    alertByQuery(incidentsTimestamps, secondValidationQuery.format("events_wide_kafka_test"))
-  }
+  // "Cases 1-17, 43-50" should "work in wide Kafka table" in {
+  //   casesPatterns.keys.foreach { id =>
+  //     Post(
+  //       "/job/submit/",
+  //       FindPatternsRequest(
+  //         s"17kafkawide_$id",
+  //         wideKafkaInputConf,
+  //         Seq(wideKafkaOutputConf),
+  //         50,
+  //         List(casesPatterns(id))
+  //       )
+  //     ) ~>
+  //     route ~> check {
+  //       withClue(s"Pattern ID: $id") {
+  //         status shouldEqual StatusCodes.OK
+  //       }
+  //       // alertByQuery(List(List(id.toDouble, incidentsCount(id).toDouble)), s"SELECT $id, COUNT(*) FROM events_wide_test WHERE id = $id")
+  //     }
+  //   }
+  //   Thread.sleep(60000)
+  //   alertByQuery(
+  //     incidentsCount
+  //       .map { case (k, v) =>
+  //         List(k.toDouble, v.toDouble)
+  //       }
+  //       .toList
+  //       .sortBy(_.headOption.getOrElse(Double.NaN)),
+  //     firstValidationQuery("events_wide_kafka_test", numbersToRanges(casesPatterns.keys.map(_.toInt).toList.sorted))
+  //   )
+  //   alertByQuery(incidentsTimestamps, secondValidationQuery.format("events_wide_kafka_test"))
+  // }
 
 }

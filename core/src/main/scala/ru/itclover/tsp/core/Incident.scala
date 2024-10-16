@@ -45,7 +45,7 @@ object IncidentInstances {
         b.incidentUUID,
         b.patternId,
         b.maxWindowMs,
-        Segment(from, to),
+        Segment(from, to, b.segment.isWait),
         b.patternUnit,
         b.patternSubunit,
         b.patternMetadata,

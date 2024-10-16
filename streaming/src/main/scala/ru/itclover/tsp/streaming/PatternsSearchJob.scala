@@ -22,7 +22,8 @@ import ru.itclover.tsp.streaming.mappers.{
   PatternProcessor,
   PatternsToRowMapper,
   ProcessorCombinator,
-  ToIncidentsMapper
+  ToIncidentsMapper,
+  IncidentMerger
 }
 import ru.itclover.tsp.streaming.transformers.SparseRowsDataAccumulator
 import ru.itclover.tsp.streaming.utils.ErrorsADT.{ConfigErr, InvalidPatternsCode}
@@ -125,6 +126,8 @@ case class PatternsSearchJob[In: EventToList, InKey, InItem](
         val optimizedPattern = new Optimizer[In].optimize(pattern)
 
         val incidentPattern = MapWithContextPattern(optimizedPattern)(toIncidents.apply)
+
+        implicit val incidentMerger = IncidentMerger
 
         PatternProcessor[In, Optimizer.S[Segment], Incident](
           incidentPattern,

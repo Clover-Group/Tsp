@@ -6,17 +6,18 @@ import cats.{Foldable, Functor, Monad}
 import ru.itclover.tsp.core.Pattern.{Idx, QI}
 
 import scala.annotation.tailrec
+import scala.collection.mutable
 
 /** AndThen */
 //We lose T1 and T2 in output for performance reason only. If needed outputs of first and second stages can be returned as well
 case class AndThenPattern[Event, T1, T2, S1, S2](first: Pattern[Event, S1, T1], second: Pattern[Event, S2, T2])
-    extends Pattern[Event, AndThenPState[T1, T2, S1, S2], (Idx, Idx)] {
+    extends Pattern[Event, AndThenPState[T1, T2, S1, S2], Boolean] {
 
   def apply[F[_]: Monad, Cont[_]: Foldable: Functor](
     oldState: AndThenPState[T1, T2, S1, S2],
-    oldQueue: PQueue[(Idx, Idx)],
+    oldQueue: PQueue[Boolean],
     event: Cont[Event]
-  ): F[(AndThenPState[T1, T2, S1, S2], PQueue[(Idx, Idx)])] = {
+  ): F[(AndThenPState[T1, T2, S1, S2], PQueue[Boolean])] = {
 
     val firstF = first.apply[F, Cont](oldState.firstState, oldState.firstQueue, event)
     val secondF = second.apply[F, Cont](oldState.secondState, oldState.secondQueue, event)
@@ -27,77 +28,90 @@ case class AndThenPattern[Event, T1, T2, S1, S2](first: Pattern[Event, S1, T1], 
     )
       yield {
         // process queues
-        val (updatedFirstQueue, updatedSecondQueue, finalQueue) =
-          process(newFirstOutput._2, newSecondOutput._2, oldQueue)
+        val doubleQueue = uniteQueues(newFirstOutput._2, newSecondOutput._2)
+        val finalQueue =
+          process(doubleQueue, oldQueue, oldState.lastSuccess)
 
         AndThenPState(
           newFirstOutput._1,
-          updatedFirstQueue,
+          newFirstOutput._2,
           newSecondOutput._1,
-          updatedSecondQueue
+          newSecondOutput._2,
+          finalQueue.toSeq.lastOption.map(!_.value.isFail).getOrElse(false)
         ) -> finalQueue
       }
   }
 
   override def initialState(): AndThenPState[T1, T2, S1, S2] =
-    AndThenPState(first.initialState(), PQueue.empty, second.initialState(), PQueue.empty)
+    AndThenPState(first.initialState(), PQueue.empty, second.initialState(), PQueue.empty, false)
 
-  private def process(firstQ: QI[T1], secondQ: QI[T2], totalQ: QI[(Idx, Idx)]): (QI[T1], QI[T2], QI[(Idx, Idx)]) = {
-
-    @tailrec
-    def inner(first: QI[T1], second: QI[T2], total: QI[(Idx, Idx)]): (QI[T1], QI[T2], QI[(Idx, Idx)]) = {
-
-      def default: (QI[T1], QI[T2], QI[(Idx, Idx)]) = (first, second, total)
-
-      (first.headOption, second.headOption) match {
-        case (None, _) => default
-        case (_, None) => default
-        case (Some(IdxValue(start1, end1, value1)), Some(IdxValue(start2, end2, value2))) =>
-          if (value1.isFail) {
-            inner(
-              first.behead(),
-              PQueue.unwindWhile(second)(_.end <= start1),
-              total.enqueue(IdxValue(start1, end1, Result.fail))
-            )
-          } else if (value2.isFail) {
-            // Do not return Fail for the first part yet, unless it is the end of the queue
-            first.size match {
-              case 1 => inner(first.rewindTo(end2 + 1), second.behead(), total.enqueue(IdxValue(start1, end2, Fail)))
-              case _ => inner(first, second.behead(), total)
-            }
-          } else { // at this moment both first and second results are not Fail.
-            // late event from second, just skip it and fail this part only.
-            // first            |-------|
-            // second  |------|
-            if (start1 > end2) {
-              inner(first, second.behead(), total.enqueue(IdxValue(start2, end2, Fail)))
-            }
-            // Gap between first and second. Just behead first and fail this part only.
-            // first   |-------|
-            // second             |------|
-            else if (end1 + 1 < start2) {
-              inner(first.behead(), second, total.enqueue(IdxValue(start1, end1, Fail)))
-            }
-            // First and second intersect
-            // first   |-------|
-            // second       |-------|
-            // result  |------------| (take union, not intersection)
-            else {
-              val end = Math.max(end1 + 1, end2)
-              val start = Math.min(start1, start2)
-              val newResult = IdxValue(
-                start,
-                end,
-                Succ((start, end))
-              ) // todo nobody uses the output of AndThen pattern. Let's drop it later.
-              inner(first.rewindTo(end + 1), second.rewindTo(end + 1), total.enqueue(newResult))
-            }
-          }
-      }
-
+  private def process(
+    unitedQueue: DoubleQueue[T1, T2],
+    totalQ: QI[Boolean],
+    lastSuccess: Boolean
+  ): QI[Boolean] = {
+    // @tailrec
+    def inner(inputQ: DoubleQueue[T1, T2], outputQ: QI[Boolean], lastSuccess: Boolean): (QI[Boolean], Boolean) = {
+      // println(s"AT: head = ${inputQ.headOption}")
+      val res = inputQ.headOption match
+        case Some(start, end, (value1, value2)) =>
+          (value1, value2) match
+            case (Fail, Fail) | (Fail, Wait) =>
+              inner(inputQ.tail, outputQ.enqueue(IdxValue(start, end, Result.fail)), false)
+            case (Fail, Succ(_)) =>
+              inner(
+                inputQ.tail,
+                outputQ.enqueue(IdxValue(start, end, if (lastSuccess) Result.succ(true) else Result.fail)),
+                lastSuccess
+              )
+            case (Wait, Fail) | (Wait, Wait) =>
+              inner(inputQ.tail, outputQ.enqueue(IdxValue(start, end, Result.wait)), false)
+            case (Wait, Succ(_)) =>
+              inner(
+                inputQ.tail,
+                outputQ.enqueue(IdxValue(start, end, if (lastSuccess) Result.succ(true) else Result.wait)),
+                lastSuccess
+              )
+            case (Succ(_), Fail) | (Succ(_), Wait) =>
+              inner(inputQ.tail, outputQ.enqueue(IdxValue(start, end, Result.wait)), true)
+            case (Succ(_), Succ(_)) => inner(inputQ.tail, outputQ.enqueue(IdxValue(start, end, Result.succ(true))), true)
+        case None => (outputQ, false)
+      // println(s"res = $res")
+      res
     }
 
-    inner(firstQ, secondQ, totalQ)
+    inner(unitedQueue, totalQ, lastSuccess)._1
+  }
+
+  type DoubleQueue[T1, T2] = mutable.ArrayDeque[(Idx, Idx, (Result[T1], Result[T2]))]
+
+  private def uniteQueues(firstQ: QI[T1], secondQ: QI[T2]): DoubleQueue[T1, T2] = {
+    @tailrec
+    def inner(firstQ: QI[T1], secondQ: QI[T2], outputQ: DoubleQueue[T1, T2]): DoubleQueue[T1, T2] =
+      (firstQ.headOption, secondQ.headOption) match {
+        case (Some(IdxValue(start1, end1, value1)), Some(IdxValue(start2, end2, value2))) =>
+          if (start1 < start2) {
+            inner(firstQ.rewindTo(start2), secondQ, outputQ.addOne((start1, start2 - 1, (value1, Result.fail))))
+          } else if (start1 > start2) {
+            inner(firstQ, secondQ.rewindTo(start1), outputQ.addOne((start2, start1 - 1, (Result.fail, value2))))
+          } else if (end1 < end2) {
+            inner(firstQ.dequeue()._2, secondQ.rewindTo(end1 + 1), outputQ.addOne((start1, end1, (value1, value2))))
+          } else if (end1 > end2) {
+            inner(firstQ.rewindTo(end2 + 1), secondQ.dequeue()._2, outputQ.addOne((start2, end2, (value1, value2))))
+          } else {
+            inner(firstQ.dequeue()._2, secondQ.dequeue()._2, outputQ.addOne(start1, end1, (value1, value2)))
+          }
+        case (Some(IdxValue(start1, end1, value1)), None) =>
+          inner(firstQ.dequeue()._2, secondQ, outputQ.addOne((start1, end1, (value1, Result.fail))))
+        case (None, Some(IdxValue(start2, end2, value2))) =>
+          inner(firstQ, secondQ.dequeue()._2, outputQ.addOne((start2, end2, (Result.fail, value2))))
+        case _ => outputQ
+      }
+    val outputQ: DoubleQueue[T1, T2] = mutable.ArrayDeque.empty
+    // println(s"QUEUE MERGER: 1st = $firstQ, 2nd = $secondQ")
+    inner(firstQ, secondQ, outputQ)
+    // println(s"QUEUE MERGER RESULT: $outputQ")
+    // outputQ
   }
 
 }
@@ -106,5 +120,6 @@ case class AndThenPState[T1, T2, State1, State2](
   firstState: State1,
   firstQueue: PQueue[T1],
   secondState: State2,
-  secondQueue: PQueue[T2]
+  secondQueue: PQueue[T2],
+  lastSuccess: Boolean
 )

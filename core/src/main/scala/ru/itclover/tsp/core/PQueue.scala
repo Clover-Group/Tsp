@@ -13,6 +13,7 @@ trait PQueue[T] {
   @inline def behead(): PQueue[T]
   @inline def beheadOption(): Option[PQueue[T]]
   @inline def enqueue(idxValues: IdxValue[T]*): PQueue[T]
+  @inline def enqueueOption(idxValues: Option[IdxValue[T]]*): PQueue[T]
   @inline def rewindTo(newStart: Idx): PQueue[T]
   @inline def clean(): PQueue[T]
 
@@ -77,6 +78,10 @@ object PQueue {
       this
     }
 
+    override def enqueueOption(idxValues: Option[IdxValue[T]]*): PQueue[T] = enqueue(
+      idxValues.filter(_.isDefined).map(_.get)*
+    )
+
     override def toSeq: Seq[IdxValue[T]] = queue.toSeq
     override def size: Int = queue.size
 
@@ -103,9 +108,9 @@ object PQueue {
       queue.lastOption match {
         case None =>
           val _ = queue.append(idxValue)
-        case Some(IdxValue(start, end, value)) if value == idxValue.value =>
+        case Some(IdxValue(start, end, value)) if value == idxValue.value || value.isWait =>
           { val _ = queue.removeLast() }
-          val _ = queue.append(IdxValue(Math.min(start, idxValue.start), Math.max(end, idxValue.end), value))
+          val _ = queue.append(IdxValue(Math.min(start, idxValue.start), Math.max(end, idxValue.end), idxValue.value))
         case _ =>
           val _ = queue.append(idxValue)
       }
@@ -145,6 +150,10 @@ object PQueue {
     @SuppressWarnings(Array("org.wartremover.warts.Throw"))
     override def enqueue(idxValues: IdxValue[T]*): PQueue[T] = throw new UnsupportedOperationException(
       "Cannot enqueue to IdxMapPQueue! Bad logic"
+    )
+
+    override def enqueueOption(idxValues: Option[IdxValue[T]]*): PQueue[T] = enqueue(
+      idxValues.filter(_.isDefined).map(_.get)*
     )
 
     override def clean(): PQueue[T] = this.copy(queue = queue.clean())

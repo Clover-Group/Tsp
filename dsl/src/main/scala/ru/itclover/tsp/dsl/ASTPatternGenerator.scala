@@ -157,14 +157,11 @@ case class ASTPatternGenerator[Event, EKey, EItem]()(implicit
             )
         }
       case at: AndThen =>
-        // Pair of indices indicates success, so we convert it to true
-        MapPattern(AndThenPattern(generatePattern(at.first), generatePattern(at.second)))(v =>
-          if (v.isInstanceOf[(Idx, Idx)]) true else v
-        )
+        AndThenPattern(generatePattern(at.first), generatePattern(at.second))
       // TODO: Window -> TimeInterval in TimerPattern
       case t: Timer =>
         TimerPattern(generatePattern(t.cond), Window(t.interval.max), t.maxGapMs)
-      case s: Wait =>
+      case s: Waiter =>
         WaitPattern(generatePattern(s.cond), s.window)
       case fwi: ForWithInterval => {
         val innerPat = MapPattern(WindowStatistic(generatePattern(fwi.inner), fwi.window))({
