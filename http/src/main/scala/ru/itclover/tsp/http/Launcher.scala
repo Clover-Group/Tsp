@@ -17,6 +17,7 @@ import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContext, ExecutionContextExecutor}
 import scala.io.StdIn
 import akka.stream.ActorMaterializer
+import java.net.InetAddress
 
 object Launcher extends App with HttpService {
   private val configs = ConfigFactory.load()
@@ -78,7 +79,11 @@ object Launcher extends App with HttpService {
     if (enabled) {
       val uri = s"http://$host:$port"
       log.warn(s"TSP coordinator connection enabled: connecting to $uri...")
-      val advHost = getEnvVarOrNone("TSP_ADVERTISED_HOST")
+      val advHost = if (getEnvVarOrNone("TSP_ADVERTISE_LOCAL_IP").isDefined) {
+        Some(InetAddress.getLocalHost.getHostAddress)
+      } else {
+        getEnvVarOrNone("TSP_ADVERTISED_HOST")
+      }
       val advPort = getEnvVarOrNone("TSP_ADVERTISED_PORT")
       CoordinatorService.getOrCreate(uri, advHost, advPort.flatMap(_.toIntOption)).notifyRegister()
 
