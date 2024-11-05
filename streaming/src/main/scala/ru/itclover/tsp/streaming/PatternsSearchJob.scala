@@ -33,7 +33,7 @@ import java.util.concurrent.TimeUnit
 import scala.concurrent.duration.FiniteDuration
 import scala.reflect.ClassTag
 import scala.util.chaining._
-import com.github.tototoshi.csv.{CSVWriter, defaultCSVFormat}
+import com.github.tototoshi.csv.CSVWriter
 import java.io.File
 import ru.itclover.tsp.streaming.utils.EventToList
 import java.nio.file.Files

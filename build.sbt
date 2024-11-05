@@ -253,9 +253,9 @@ git.gitTagToVersionNumber := { (tag: String) =>
   }
   tag match {
     case VersionRegex(v, "") => Some(v)
-    case VersionRegex(v, _) => Some(s"${nextVersion(v)}-SNAPSHOT")
+    case VersionRegex(v, "SNAPSHOT") => Some(s"${nextVersion(v)}-SNAPSHOT")
+    case VersionRegex(v, s) => Some(s"$v-$s")
     //case VersionRegex(v, s) if s.matches("[0-9].+") => Some(s"${nextVersion(v)}-preview$s-SNAPSHOT")
-    //case VersionRegex(v, s) => Some(s"$v-$s")
     case _ => None
   }
 }
