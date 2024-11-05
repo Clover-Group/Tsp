@@ -8,7 +8,7 @@ dockerUpdateLatest := true
 dockerAlias in Docker := dockerAlias.value.withTag(dockerAlias.value.tag.map(_.replace("+", "_")))
 dockerRepository in Docker := Some("ghcr.io")
 
-scalaVersion in ThisBuild := "3.4.1"
+scalaVersion in ThisBuild := "3.5.2"
 ThisBuild / semanticdbEnabled := true
 ThisBuild / semanticdbVersion := scalafixSemanticdb.revision
 resolvers in ThisBuild ++= Seq(
@@ -90,7 +90,7 @@ dockerCommands := Seq()
 import com.typesafe.sbt.packager.docker._
 dockerCommands := Seq(
   //Cmd("FROM", "openjdk:12.0.1-jdk-oracle"),
-  Cmd("FROM", "openjdk:22-slim"),
+  Cmd("FROM", "openjdk:23-slim"),
   //Cmd("FROM", "openjdk:8-jre-slim"),
   Cmd("LABEL", s"""MAINTAINER="${(maintainer in Docker).value}""""),
   Cmd("ADD", s"lib/${(assembly in mainRunner).value.getName}", "/opt/tsp.jar"),
@@ -253,9 +253,9 @@ git.gitTagToVersionNumber := { (tag: String) =>
   }
   tag match {
     case VersionRegex(v, "") => Some(v)
-    case VersionRegex(v, "SNAPSHOT") => Some(s"${nextVersion(v)}-SNAPSHOT")
-    case VersionRegex(v, s) if s.matches("[0-9].+") => Some(s"${nextVersion(v)}-preview$s-SNAPSHOT")
-    case VersionRegex(v, s) => Some(s"$v-$s")
+    case VersionRegex(v, _) => Some(s"${nextVersion(v)}-SNAPSHOT")
+    //case VersionRegex(v, s) if s.matches("[0-9].+") => Some(s"${nextVersion(v)}-preview$s-SNAPSHOT")
+    //case VersionRegex(v, s) => Some(s"$v-$s")
     case _ => None
   }
 }

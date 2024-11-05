@@ -1,7 +1,7 @@
 import sbt._
 
 object Version {
-  val logback = "1.5.6"
+  val logback = "1.5.12"
   val scalaLogging = "3.9.5"
   val logbackContrib = "0.1.5"
 
@@ -9,24 +9,24 @@ object Version {
 
   val influx = "2.15"
 
-  val clickhouse = "0.6.1"
+  val clickhouse = "0.7.1"
 
-  val akka = "2.8.5"
+  val akka = "2.8.8"
   val akkaHttp = "10.5.3"
   val sprayJson = "1.3.6"
 
-  val cats = "3.5.4"
-  val fs2 = "3.10.2"
+  val cats = "3.5.5"
+  val fs2 = "3.11.0"
   val fs2Kafka = "3.5.1"
-  val doobie = "1.0.0-RC5"
+  val doobie = "1.0.0-RC6"
 
   val scalaTest = "3.2.19"
   val scalaCheck = "3.2.18.0"
   val jmh = "0.3.7"
 
   val testContainers = "0.41.4"
-  val testContainersKafka = "1.19.8"
-  val postgres = "42.7.3"
+  val testContainersKafka = "1.20.3"
+  val postgres = "42.7.4"
 
   val avro = "1.8.2"
 
@@ -34,7 +34,7 @@ object Version {
 
   val shapeless = "2.3.3"
 
-  val jackson = "2.17.1"
+  val jackson = "2.18.1"
   val jaxb = "4.0.5"
   val activation = "1.2.0"
 
@@ -55,14 +55,14 @@ object Version {
 
   val strawmanVersion = "0.9.0"
 
-  val redissonVersion = "3.32.0"
-  val kryoVersion = "5.6.0"
+  val redissonVersion = "3.38.1"
+  val kryoVersion = "5.6.2"
 
   val akkaHttpMetrics = "1.7.1"
 
-  val scalaCSV = "1.4.0"
+  val scalaCSV = "2.0.0"
 
-  val apacheHttp = "5.3.1"
+  val apacheHttp = "5.4.1"
 
   val ztZip = "1.17"
 
