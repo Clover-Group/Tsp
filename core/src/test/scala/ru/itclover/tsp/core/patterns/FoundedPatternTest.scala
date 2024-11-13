@@ -15,12 +15,14 @@ class FoundedPatternTest extends AnyWordSpec with Matchers {
 
     val firstTestSegment = Segment(
       from = Time(1000),
-      to = Time(4000)
+      to = Time(4000),
+      false
     )
 
     val secondTestSegment = Segment(
       from = Time(2000),
-      to = Time(3000)
+      to = Time(3000),
+      false
     )
 
     "from semigroup" in {
@@ -58,7 +60,8 @@ class FoundedPatternTest extends AnyWordSpec with Matchers {
         maxWindowMs = 4000,
         segment = Segment(
           from = Time(1000),
-          to = Time(4000)
+          to = Time(4000),
+          false
         ),
         patternUnit = 13,
         patternSubunit = 42,

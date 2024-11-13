@@ -66,7 +66,7 @@ class CheckMemoryLeaks extends AnyFlatSpec with Matchers {
 
   it should "not have memory leaks (AndThenPattern)" in {
 
-    val pattern = field(_.row).andThen(field(_.row))
+    val pattern = field(_.row).andThen(field(_.row), MinWindow)
 
     val generator =
       Change(from = 0.0, to = 100.0, 100.seconds).after(Timed(Constant(100.0), 100.seconds)).repeat(1000000).map(_.toInt)

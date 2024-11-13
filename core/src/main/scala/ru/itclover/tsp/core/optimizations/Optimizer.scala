@@ -81,10 +81,11 @@ class Optimizer[E: IdxExtractor: TimeExtractor]() extends Serializable {
   }
 
   private def optimizeInners[T]: OptimizeRule[T] = {
-    case AndThenPattern(first, second) if optimizable(first) || optimizable(second) =>
+    case AndThenPattern(first, second, window) if optimizable(first) || optimizable(second) =>
       AndThenPattern(
         forceState(optimizePat(first)),
-        forceState(optimizePat(second))
+        forceState(optimizePat(second)),
+        window
       )
     case x @ MapPattern(inner) if optimizable(inner) =>
       MapPattern(forceState(optimizePat(inner)))(x.func)

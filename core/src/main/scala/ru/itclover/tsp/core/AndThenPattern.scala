@@ -2,16 +2,22 @@ package ru.itclover.tsp.core
 
 import cats.syntax.flatMap._
 import cats.syntax.functor._
+import cats.syntax.foldable._
 import cats.{Foldable, Functor, Monad}
 import ru.itclover.tsp.core.Pattern.{Idx, QI}
 
 import scala.annotation.tailrec
 import scala.collection.mutable
+import ru.itclover.tsp.core.io.TimeExtractor
+import ru.itclover.tsp.core.Pattern.IdxExtractor
 
 /** AndThen */
 //We lose T1 and T2 in output for performance reason only. If needed outputs of first and second stages can be returned as well
-case class AndThenPattern[Event, T1, T2, S1, S2](first: Pattern[Event, S1, T1], second: Pattern[Event, S2, T2])
-    extends Pattern[Event, AndThenPState[T1, T2, S1, S2], Boolean] {
+case class AndThenPattern[Event: IdxExtractor: TimeExtractor, T1, T2, S1, S2](
+  first: Pattern[Event, S1, T1],
+  second: Pattern[Event, S2, T2],
+  secondWindowMs: Window
+) extends Pattern[Event, AndThenPState[T1, T2, S1, S2], Boolean] {
 
   def apply[F[_]: Monad, Cont[_]: Foldable: Functor](
     oldState: AndThenPState[T1, T2, S1, S2],
@@ -22,6 +28,12 @@ case class AndThenPattern[Event, T1, T2, S1, S2](first: Pattern[Event, S1, T1], 
     val firstF = first.apply[F, Cont](oldState.firstState, oldState.firstQueue, event)
     val secondF = second.apply[F, Cont](oldState.secondState, oldState.secondQueue, event)
 
+    val idxExtractor = implicitly[IdxExtractor[Event]]
+    val timeExtractor = implicitly[TimeExtractor[Event]]
+    val times = event
+      .foldLeft(mutable.ListBuffer.empty[(Idx, Time)])((queue, e) => queue.addOne(idxExtractor(e), timeExtractor(e)))
+      .toList
+
     for (
       newFirstOutput  <- firstF;
       newSecondOutput <- secondF
@@ -30,57 +42,117 @@ case class AndThenPattern[Event, T1, T2, S1, S2](first: Pattern[Event, S1, T1], 
         // process queues
         val doubleQueue = uniteQueues(newFirstOutput._2, newSecondOutput._2)
         val finalQueue =
-          process(doubleQueue, oldQueue, oldState.lastSuccess)
+          process(doubleQueue, oldQueue, oldState.secondSuccStart, oldState.lastSuccess, times, secondWindowMs)
 
         AndThenPState(
           newFirstOutput._1,
           newFirstOutput._2,
           newSecondOutput._1,
           newSecondOutput._2,
-          finalQueue.toSeq.lastOption.map(!_.value.isFail).getOrElse(false)
-        ) -> finalQueue
+          finalQueue._1.toSeq.lastOption.map(!_.value.isFail).getOrElse(false),
+          finalQueue._2
+        ) -> finalQueue._1
       }
   }
 
   override def initialState(): AndThenPState[T1, T2, S1, S2] =
-    AndThenPState(first.initialState(), PQueue.empty, second.initialState(), PQueue.empty, false)
+    AndThenPState(first.initialState(), PQueue.empty, second.initialState(), PQueue.empty, false, None)
 
   private def process(
     unitedQueue: DoubleQueue[T1, T2],
     totalQ: QI[Boolean],
-    lastSuccess: Boolean
-  ): QI[Boolean] = {
+    secondSuccStart: Option[Idx],
+    lastSuccess: Boolean,
+    times: List[(Idx, Time)],
+    secondWindowMs: Window
+  ): (QI[Boolean], Option[Idx]) = {
     // @tailrec
-    def inner(inputQ: DoubleQueue[T1, T2], outputQ: QI[Boolean], lastSuccess: Boolean): (QI[Boolean], Boolean) = {
-      // println(s"AT: head = ${inputQ.headOption}")
-      val res = inputQ.headOption match
+    def inner(
+      inputQ: DoubleQueue[T1, T2],
+      outputQ: QI[Boolean],
+      secondSuccStart: Option[Idx],
+      lastSuccess: Boolean
+    ): (QI[Boolean], Option[Idx], Boolean) = {
+      // println(s"AT: head = ${inputQ.headOptzion}")
+      val res: (QI[Boolean], Option[Idx], Boolean) = inputQ.headOption match
         case Some(start, end, (value1, value2)) =>
+          val newSecondSuccStart = secondSuccStart.orElse(Some(start))
+          val outputSuccStart =
+            newSecondSuccStart
+              .flatMap(start => times.find { case (idx, time) => start <= time.plus(secondWindowMs).toMillis })
+              .map(_._1)
           (value1, value2) match
-            case (Fail, Fail) | (Fail, Wait) =>
-              inner(inputQ.tail, outputQ.enqueue(IdxValue(start, end, Result.fail)), false)
+            case (Fail, Fail) =>
+              inner(inputQ.tail, outputQ.enqueue(IdxValue(start, end, Result.fail)), None, false)
+            case (Fail, Wait) =>
+              inner(
+                inputQ.tail,
+                outputQ.enqueue(IdxValue(start, end, Result.fail)),
+                newSecondSuccStart,
+                false
+              )
             case (Fail, Succ(_)) =>
               inner(
                 inputQ.tail,
                 outputQ.enqueue(IdxValue(start, end, if (lastSuccess) Result.succ(true) else Result.fail)),
+                newSecondSuccStart,
                 lastSuccess
               )
-            case (Wait, Fail) | (Wait, Wait) =>
-              inner(inputQ.tail, outputQ.enqueue(IdxValue(start, end, Result.wait)), false)
-            case (Wait, Succ(_)) =>
+            case (Wait, Fail) =>
+              inner(inputQ.tail, outputQ.enqueue(IdxValue(start, end, Result.wait)), None, false)
+            case (Wait, Wait) =>
               inner(
                 inputQ.tail,
-                outputQ.enqueue(IdxValue(start, end, if (lastSuccess) Result.succ(true) else Result.wait)),
+                outputQ.enqueue(IdxValue(start, end, Result.wait)),
+                newSecondSuccStart,
+                false
+              )
+            case (Wait, Succ(_)) =>
+              val events =
+                if (outputSuccStart.map(_ <= start).getOrElse(false))
+                  List(IdxValue(start, end, if (lastSuccess) Result.succ(true) else Result.wait))
+                else if (outputSuccStart.map(_ > end).getOrElse(true)) List(IdxValue(start, end, Result.wait))
+                else {
+                  val splitIdx = outputSuccStart.get
+                  List(
+                    IdxValue(start, splitIdx - 1, Result.wait),
+                    IdxValue(splitIdx, end, if (lastSuccess) Result.succ(true) else Result.wait)
+                  )
+                }
+              inner(
+                inputQ.tail,
+                outputQ.enqueue(events*),
+                newSecondSuccStart,
                 lastSuccess
               )
-            case (Succ(_), Fail) | (Succ(_), Wait) =>
-              inner(inputQ.tail, outputQ.enqueue(IdxValue(start, end, Result.wait)), true)
-            case (Succ(_), Succ(_)) => inner(inputQ.tail, outputQ.enqueue(IdxValue(start, end, Result.succ(true))), true)
-        case None => (outputQ, false)
+            case (Succ(_), Fail) =>
+              inner(inputQ.tail, outputQ.enqueue(IdxValue(start, end, Result.wait)), None, true)
+            case (Succ(_), Wait) =>
+              inner(
+                inputQ.tail,
+                outputQ.enqueue(IdxValue(start, end, Result.wait)),
+                newSecondSuccStart,
+                true
+              )
+            case (Succ(_), Succ(_)) =>
+              val events =
+                if (outputSuccStart.map(_ <= start).getOrElse(false)) List(IdxValue(start, end, Result.succ(true)))
+                else if (outputSuccStart.map(_ > end).getOrElse(true)) List(IdxValue(start, end, Result.wait))
+                else {
+                  val splitIdx = outputSuccStart.get
+                  List(
+                    IdxValue(start, splitIdx - 1, Result.wait),
+                    IdxValue(splitIdx, end, Result.succ(true))
+                  )
+                }
+              inner(inputQ.tail, outputQ.enqueue(events*), newSecondSuccStart, true)
+        case None => (outputQ, secondSuccStart, false)
       // println(s"res = $res")
       res
     }
 
-    inner(unitedQueue, totalQ, lastSuccess)._1
+    var res = inner(unitedQueue, totalQ, secondSuccStart, lastSuccess)
+    (res._1, res._2)
   }
 
   type DoubleQueue[T1, T2] = mutable.ArrayDeque[(Idx, Idx, (Result[T1], Result[T2]))]
@@ -121,5 +193,6 @@ case class AndThenPState[T1, T2, State1, State2](
   firstQueue: PQueue[T1],
   secondState: State2,
   secondQueue: PQueue[T2],
-  lastSuccess: Boolean
+  lastSuccess: Boolean,
+  secondSuccStart: Option[Idx]
 )

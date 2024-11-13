@@ -19,7 +19,7 @@ resolvers in ThisBuild ++= Seq(
 ThisBuild / scalafixDependencies += "com.github.liancheng" %% "organize-imports" % "0.6.0"
 //javaOptions in ThisBuild += "--add-modules=java.xml.bind"
 lazy val launcher = "ru.itclover.tsp.http.Launcher"
- 
+
 lazy val commonSettings = Seq(
   // Improved type inference via the fix for SI-2712 (for Cats dep.)
   // Remove StringPlusAny wart because of false alarming on s-strings
@@ -219,7 +219,7 @@ lazy val itValid = project.in(file("integration/correctness"))
 
 /*** Other settings ***/
 
-// Exclude sources 
+// Exclude sources
 //excludeFilter in unmanagedResources := {
 //  val public = ((resourceDirectory in Compile).value / "com" / "example" / "export" / "dev").getCanonicalPath
 //  new SimpleFileFilter(_.getCanonicalPath startsWith public)
@@ -240,21 +240,21 @@ import sbtrelease.{versionFormatError, Version => ReleaseVersion}
 
 git.useGitDescribe := true
 git.baseVersion := IO.read(file("./VERSION")) // if no tags are present
-val VersionRegex = "v([0-9]+.[0-9]+.[0-9]+)-?(.*)?".r
+val VersionRegex = "v([0-9]+.[0-9]+.[0-9]+)(-rc[0-9]+)?(-.+)?".r
 
 def nextMinorVersion(v: String): String =  Bump.Minor.bump(ReleaseVersion(v).getOrElse(versionFormatError(v))).string
-
 def nextMajorVersion(v: String): String =  Bump.Major.bump(ReleaseVersion(v).getOrElse(versionFormatError(v))).string
 
 git.gitTagToVersionNumber := { (tag: String) =>
-  val nextVersion = git.gitCurrentBranch.value match {
-    case "master" => nextMajorVersion _
-    case _        => nextMinorVersion _
-  }
+  // val nextVersion = git.gitCurrentBranch.value match {
+  //   case "master" => nextMajorVersion _
+  //   case _        => nextMinorVersion _
+  // }
   tag match {
-    case VersionRegex(v, "") => Some(v)
-    case VersionRegex(v, "SNAPSHOT") => Some(s"${nextVersion(v)}-SNAPSHOT")
-    case VersionRegex(v, s) => Some(s"$v-$s")
+    case VersionRegex(v, s, t) => Some(s"$v$s-SNAPSHOT")
+    //case VersionRegex(v, "SNAPSHOT", "") => Some(s"$v-SNAPSHOT")
+    //case VersionRegex(v, s, "") => Some(s"$v-$s")
+    //case VersionRegex(v, s, "SNAPSHOT") => Some(s"$v-$s-SNAPSHOT")
     //case VersionRegex(v, s) if s.matches("[0-9].+") => Some(s"${nextVersion(v)}-preview$s-SNAPSHOT")
     case _ => None
   }

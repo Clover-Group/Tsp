@@ -7,6 +7,7 @@ import ru.itclover.tsp.core.Pattern.{Idx, IdxExtractor}
 import ru.itclover.tsp.core._
 import ru.itclover.tsp.core.aggregators.{WaitPattern, TimerPattern, WindowStatistic, WindowStatisticResult}
 import ru.itclover.tsp.core.io.{Extractor, TimeExtractor}
+import ru.itclover.tsp.core.Time.longWindow
 
 import scala.reflect.ClassTag
 import org.parboiled2.ParseError
@@ -157,7 +158,7 @@ case class ASTPatternGenerator[Event, EKey, EItem]()(implicit
             )
         }
       case at: AndThen =>
-        AndThenPattern(generatePattern(at.first), generatePattern(at.second))
+        AndThenPattern(generatePattern(at.first), generatePattern(at.second), at.second.metadata.sumWindowsMs)
       // TODO: Window -> TimeInterval in TimerPattern
       case t: Timer =>
         TimerPattern(generatePattern(t.cond), Window(t.interval.max), t.maxGapMs)

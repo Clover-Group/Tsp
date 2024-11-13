@@ -15,6 +15,7 @@ import ru.itclover.tsp.core.{IdxValue, Patterns, Result, StateMachine, Window}
 
 import scala.collection.mutable.ArrayBuffer
 import scala.concurrent.duration._
+import ru.itclover.tsp.core.Time.MinWindow
 
 // In test cases, 'should' expressions are non-unit. Suppressing wartremover warnings about it
 @SuppressWarnings(Array("org.wartremover.warts.NonUnitStatements", "org.wartremover.warts.Any"))
@@ -25,7 +26,7 @@ class AndThenPatternTest extends AnyFlatSpec with Matchers {
 
   it should "combine two simple patterns" in {
 
-    val pattern = p.assert(field(_.row) > const(0)).andThen(p.assert(field(_.col) =!= const(0)))
+    val pattern = p.assert(field(_.row) > const(0)).andThen(p.assert(field(_.col) =!= const(0)), MinWindow)
 
     val events = (for (
       time <- Timer(from = Instant.now());
@@ -53,7 +54,8 @@ class AndThenPatternTest extends AnyFlatSpec with Matchers {
       .andThen(
         p.assert(
           field(_.col) =!= const(0)
-        )
+        ),
+        MinWindow
       )
 
     val events = (for (
@@ -84,7 +86,8 @@ class AndThenPatternTest extends AnyFlatSpec with Matchers {
       .andThen(
         p.assert(
           field(_.col) === const(0)
-        )
+        ),
+        MinWindow
       )
 
     val events = (for (

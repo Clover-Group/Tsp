@@ -17,7 +17,9 @@ abstract class Patterns[E: IdxExtractor: TimeExtractor] {
 
   implicit class AndThenSyntax[S, T](pattern: Pat[S, T]) {
 
-    def andThen[S2, T2](nextPattern: Pat[S2, T2]): AndThenPattern[E, T, T2, S, S2] = AndThenPattern(pattern, nextPattern)
+    def andThen[S2, T2](nextPattern: Pat[S2, T2], secondWindowMs: Window): AndThenPattern[E, T, T2, S, S2] =
+      AndThenPattern(pattern, nextPattern, secondWindowMs)
+
   }
 
   implicit class OrderingPatternSyntax[S, T: Ordering](pattern: Pat[S, T]) {
