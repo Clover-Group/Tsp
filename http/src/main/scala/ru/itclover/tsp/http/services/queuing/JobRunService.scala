@@ -255,10 +255,11 @@ class JobRunService(id: String, blockingExecutionContext: ExecutionContextExecut
         case Right(_) =>
           // success
           log.info(s"Job $uuid finished")
-          CoordinatorService.notifyJobCompleted(uuid, None)
-          CheckpointingService.removeCheckpointAndState(uuid)
           runningStreams.remove(uuid)
           runningJobsRequests.remove(uuid)
+          CoordinatorService.notifyJobCompleted(uuid, None)
+          CheckpointingService.removeCheckpointAndState(uuid)
+
       }
 
     Right(None)
@@ -269,7 +270,7 @@ class JobRunService(id: String, blockingExecutionContext: ExecutionContextExecut
     runningStreams(uuid).set(false)
   }
 
-  def getRunningJobsIds: Seq[String] = runningStreams.keys.toSeq
+  def getRunningJobsIds: Seq[String] = runningStreams.filter { case (_, value) => value.get() }.keys.toSeq
 
   def onTimer(): Unit = {
     if (jobQueue.nonEmpty) {
