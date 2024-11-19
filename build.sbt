@@ -14,7 +14,8 @@ ThisBuild / semanticdbVersion := scalafixSemanticdb.revision
 resolvers in ThisBuild ++= Seq(
   "Apache Development Snapshot Repository" at "https://repository.apache.org/content/repositories/snapshots/",
   Resolver.mavenLocal,
-  "jitpack" at "https://jitpack.io"
+  "jitpack" at "https://jitpack.io",
+  "akka" at "https://repo.akka.io/maven"
 )
 ThisBuild / scalafixDependencies += "com.github.liancheng" %% "organize-imports" % "0.6.0"
 //javaOptions in ThisBuild += "--add-modules=java.xml.bind"
