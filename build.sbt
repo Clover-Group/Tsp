@@ -7,6 +7,7 @@ dockerUsername in Docker := Some("clover-group")
 dockerUpdateLatest := true
 dockerAlias in Docker := dockerAlias.value.withTag(dockerAlias.value.tag.map(_.replace("+", "_")))
 dockerRepository in Docker := Some("ghcr.io")
+version in Docker := version.value.stripSuffix("-SNAPSHOT").trim
 
 scalaVersion in ThisBuild := "3.5.2"
 ThisBuild / semanticdbEnabled := true

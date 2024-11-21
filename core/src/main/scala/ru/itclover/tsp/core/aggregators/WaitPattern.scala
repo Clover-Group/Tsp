@@ -53,7 +53,7 @@ case class WaitAccumState[T]() extends AccumState[T, T, WaitAccumState[T]] {
     times: m.ArrayDeque[(Idx, Time)],
     idxValue: IdxValue[T]
   ): (WaitAccumState[T], QI[T]) = {
-    log.warn("Wait operator is now redundant and deprecated, returning the inner results as-is");
+    log.debug("Wait operator is now redundant and deprecated, returning the inner results as-is");
     (WaitAccumState(), PQueue(idxValue))
   }
 
