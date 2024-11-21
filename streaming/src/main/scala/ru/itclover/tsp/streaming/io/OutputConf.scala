@@ -6,7 +6,8 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.ObjectNode
 //import doobie.WeakAsync.doobieWeakAsyncForAsync
 import doobie.{ConnectionIO, Transactor}
-import doobie.implicits._
+import doobie.implicits.toSqlInterpolator
+import doobie.implicits.javatimedrivernative.JavaLocalDateTimeMeta
 import doobie.util.fragment.Fragment
 import fs2.Pipe
 import fs2.kafka.{Acks, KafkaProducer, ProducerRecord, ProducerRecords, ProducerSettings, Serializer}
@@ -20,6 +21,15 @@ import doobie.util.log.LogHandler
 import doobie.util.log.LogEvent
 import com.typesafe.scalalogging.Logger
 import java.sql.JDBCType
+import doobie.util.meta.Meta
+import doobie.util.meta.TimeMetaInstances
+import java.time.ZoneOffset
+import ru.itclover.tsp.core.Time
+import java.time.format.DateTimeFormatterBuilder
+import java.time.temporal.ChronoField
+import doobie.util.Put.Basic
+import doobie.util.Write
+import java.time.LocalDateTime
 
 trait OutputConf[Event] {
 
@@ -76,6 +86,9 @@ case class JDBCOutputConf(
     override def run(logEvent: LogEvent): IO[Unit] = IO { log.debug(logEvent.sql) }
 
   }
+
+  implicit val datetimeMeta: Meta[ZonedDateTime] =
+    JavaLocalDateTimeMeta.timap(ldt => ldt.atZone(ZoneId.of("UTC")))(zdt => zdt.toLocalDateTime())
 
   lazy val transactor = Transactor.fromDriverManager[IO](
     fixedDriverName,
@@ -138,12 +151,20 @@ case class JDBCOutputConf(
     fragment.update.run
   }
 
+  val timeFormatterParser = new DateTimeFormatterBuilder()
+    .appendPattern("uuuu-MM-dd HH:mm:ss")
+    .appendFraction(ChronoField.NANO_OF_SECOND, 0, 9, true)
+    .toFormatter()
+    .withZone(ZoneId.of("UTC"))
+
   def fragmentForDataValue(x: Object, t: Int): Fragment = {
     t match {
       case Types.INTEGER => fr"${x.toString.toInt}"
       case Types.FLOAT   => fr"${x.toString.toFloat}"
       case Types.DOUBLE  => fr"${x.toString.toDouble}"
-      case _             => fr"${x.toString}"
+      case Types.TIMESTAMP =>
+        fr"${ZonedDateTime.parse(x.toString, timeFormatterParser)}"
+      case _ => fr"${x.toString}"
     }
   }
 
