@@ -19,7 +19,7 @@ object Version {
   val cats = "3.5.4"
   val fs2 = "3.10.2"
   val fs2Kafka = "3.5.1"
-  val doobie = "1.0.0-RC5"
+  val doobie = "1.0.0-RC6"
 
   val scalaTest = "3.2.19"
   val scalaCheck = "3.2.18.0"
