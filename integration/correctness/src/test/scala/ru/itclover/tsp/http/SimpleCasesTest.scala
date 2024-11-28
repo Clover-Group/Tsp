@@ -51,7 +51,7 @@ class SimpleCasesTest
     with RoutesProtocols {
   implicit override val executionContext: ExecutionContextExecutor = scala.concurrent.ExecutionContext.global
 
-  override val jobRunService: JobRunService = JobRunService.getOrCreate("mgr", executionContext)
+  override val jobRunService: JobRunService = JobRunService.getOrCreate("mgr", 5000, executionContext)
 
   // to run blocking tasks.
   val blockingExecutorContext: ExecutionContextExecutor =

@@ -120,6 +120,8 @@ trait MonitoringRoutes extends RoutesProtocols {
           )
         )
       )
+    } ~ path("jobs" / "limits") {
+      complete(List(jrs.currentJobsCount.get(), jrs.finishedJobsCount.get(), jrs.maxJobsCount).toJson)
     }
 
 }

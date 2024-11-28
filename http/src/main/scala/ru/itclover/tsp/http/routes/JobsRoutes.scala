@@ -2,7 +2,7 @@ package ru.itclover.tsp.http.routes
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
-import akka.http.scaladsl.model.StatusCodes.PermanentRedirect
+import akka.http.scaladsl.model.StatusCodes.{PermanentRedirect, LoopDetected}
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import akka.stream.Materializer
@@ -17,6 +17,8 @@ import ru.itclover.tsp.http.services.queuing.JobRunService
 import spray.json._
 
 import scala.concurrent.ExecutionContextExecutor
+import ru.itclover.tsp.http.Launcher
+import ru.itclover.tsp.http.domain.output.FailureResponse
 
 trait JobsRoutes extends RoutesProtocols {
   implicit val executionContext: ExecutionContextExecutor
@@ -32,8 +34,12 @@ trait JobsRoutes extends RoutesProtocols {
   val route: Route =
     path("job" / "submit"./) {
       entity(as[FindPatternsRequest[RowWithIdx, String, Any, Row]]) { request =>
-        jobRunService.enqueue(request)
-        complete(Map("status" -> s"Job ${request.uuid} enqueued.").toJson(propertyFormat))
+        val result = jobRunService.enqueue(request)
+        if (result.isRight) {
+          complete(Map("status" -> s"Job ${request.uuid} enqueued.").toJson(propertyFormat))
+        } else {
+          complete((LoopDetected, FailureResponse(5080, "Jobs limit reached", Seq.empty)))
+        }
       }
     } ~
       path("queue" / "show") {
@@ -70,7 +76,7 @@ object JobsRoutes {
         implicit val executionContext: ExecutionContextExecutor = execContext
         implicit val actorSystem = as
         implicit val materializer = am
-        override val jobRunService = JobRunService.getOrCreate("mgr", blocking)(
+        override val jobRunService = JobRunService.getOrCreate("mgr", Launcher.getMaxTotalJobCount, blocking)(
           execContext,
           as,
           am,

@@ -18,6 +18,7 @@ import scala.concurrent.{Await, ExecutionContext, ExecutionContextExecutor}
 import scala.io.StdIn
 import akka.stream.ActorMaterializer
 import java.net.InetAddress
+import scala.util.Try
 
 object Launcher extends App with HttpService {
   private val configs = ConfigFactory.load()
@@ -155,5 +156,10 @@ object Launcher extends App with HttpService {
     port.map(p => (enabled, host, p))
   }
 
-  implicit val jobRunService = JobRunService.getOrCreate("mgr", blockingExecutorContext)
+  def getMaxTotalJobCount = {
+    val jobCountStr = getEnvVarOrNone("MAX_TOTAL_JOB_COUNT")
+    Try(jobCountStr.map(_.toInt)).toOption.flatten.getOrElse(Int.MaxValue)
+  }
+
+  implicit val jobRunService = JobRunService.getOrCreate("mgr", getMaxTotalJobCount, blockingExecutorContext)
 }
