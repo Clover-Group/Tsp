@@ -35,6 +35,7 @@ import scala.concurrent.duration.FiniteDuration
 import java.util.concurrent.atomic.AtomicBoolean
 import ru.itclover.tsp.streaming.utils.ErrorsADT.Err
 import ru.itclover.tsp.streaming.utils.EventToList
+import java.util.concurrent.atomic.AtomicInteger
 
 class StreamRunException(val error: Err) extends Exception {
 
@@ -43,7 +44,7 @@ class StreamRunException(val error: Err) extends Exception {
 
 }
 
-class JobRunService(id: String, blockingExecutionContext: ExecutionContextExecutor)(implicit
+class JobRunService(id: String, val maxJobsCount: Int, blockingExecutionContext: ExecutionContextExecutor)(implicit
   executionContext: ExecutionContextExecutor,
   actorSystem: ActorSystem,
   materializer: Materializer,
@@ -72,6 +73,9 @@ class JobRunService(id: String, blockingExecutionContext: ExecutionContextExecut
 
   val ex = new ScheduledThreadPoolExecutor(1)
 
+  val currentJobsCount: AtomicInteger = AtomicInteger(0)
+  val finishedJobsCount: AtomicInteger = AtomicInteger(0)
+
   val task: Runnable = new Runnable {
     def run(): Unit = onTimer()
   }
@@ -79,11 +83,18 @@ class JobRunService(id: String, blockingExecutionContext: ExecutionContextExecut
   val f: ScheduledFuture[_] = ex.scheduleAtFixedRate(task, 0, 1, TimeUnit.SECONDS)
   // f.cancel(false)
 
-  def enqueue(r: Request): Unit = {
-    jobQueue.enqueue(
-      (r, confClassTagToString(ClassTag(r.inputConf.getClass)))
-    )
-    log.info(s"Job ${r.uuid} enqueued.")
+  def enqueue(r: Request): Either[Unit, Unit] = {
+    if (currentJobsCount.get() >= maxJobsCount) {
+      log.error(s"Cannot enqueue job ${r.uuid}: limit of $maxJobsCount reached.")
+      Left(())
+    } else {
+      jobQueue.enqueue(
+        (r, confClassTagToString(ClassTag(r.inputConf.getClass)))
+      )
+      currentJobsCount.incrementAndGet()
+      log.info(s"Job ${r.uuid} enqueued.")
+      Right(())
+    }
   }
 
   def confClassTagToString(ct: ClassTag[_]): String = ct.runtimeClass match {
@@ -252,13 +263,22 @@ class JobRunService(id: String, blockingExecutionContext: ExecutionContextExecut
           CheckpointingService.setCheckpointAndStateExpirable(uuid)
           runningStreams.remove(uuid)
           runningJobsRequests.remove(uuid)
+          if (finishedJobsCount.get() == maxJobsCount) {
+            log.warn(s"Limit of $maxJobsCount reached. Terminating...")
+            System.exit(0)
+          }
         case Right(_) =>
           // success
           log.info(s"Job $uuid finished")
           runningStreams.remove(uuid)
           runningJobsRequests.remove(uuid)
+          finishedJobsCount.incrementAndGet()
           CoordinatorService.notifyJobCompleted(uuid, None)
           CheckpointingService.removeCheckpointAndState(uuid)
+          if (finishedJobsCount.get() == maxJobsCount) {
+            log.warn(s"Limit of $maxJobsCount reached. Terminating...")
+            System.exit(0)
+          }
 
       }
 
@@ -283,13 +303,13 @@ class JobRunService(id: String, blockingExecutionContext: ExecutionContextExecut
 object JobRunService {
   val services: mutable.Map[Uri, JobRunService] = mutable.Map.empty
 
-  def getOrCreate(id: String, blockingExecutionContext: ExecutionContextExecutor)(implicit
+  def getOrCreate(id: String, maxJobsCount: Int, blockingExecutionContext: ExecutionContextExecutor)(implicit
     executionContext: ExecutionContextExecutor,
     actorSystem: ActorSystem,
     materializer: Materializer,
     decoders: BasicDecoders[Any] = AnyDecodersInstances
   ): JobRunService = {
-    if (!services.contains(id)) services(id) = new JobRunService(id, blockingExecutionContext)
+    if (!services.contains(id)) services(id) = new JobRunService(id, maxJobsCount, blockingExecutionContext)
     services(id)
   }
 
