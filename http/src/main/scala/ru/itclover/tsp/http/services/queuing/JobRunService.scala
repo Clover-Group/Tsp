@@ -36,6 +36,8 @@ import java.util.concurrent.atomic.AtomicBoolean
 import ru.itclover.tsp.streaming.utils.ErrorsADT.Err
 import ru.itclover.tsp.streaming.utils.EventToList
 import java.util.concurrent.atomic.AtomicInteger
+import ru.itclover.tsp.streaming.utils.ErrorsADT.InvalidRequest
+import ru.itclover.tsp.streaming.utils.ErrorsADT.JobLimitErr
 
 class StreamRunException(val error: Err) extends Exception {
 
@@ -61,10 +63,6 @@ class JobRunService(id: String, val maxJobsCount: Int, blockingExecutionContext:
 
   private val log = Logger[JobRunService]
 
-  // val jobQueue = PersistentSet[TypedRequest, Nothing, Glass](dir = Paths.get("/tmp/job_queue"))
-  // log.warn(s"Recovering job queue: ${jobQueue.count} entries found")
-  val jobQueue = mutable.Queue[TypedRequest]()
-
   val runningStreams = mutable.Map[String, AtomicBoolean]()
 
   val runningJobsRequests = mutable.Map[String, QueueableRequest]()
@@ -76,24 +74,17 @@ class JobRunService(id: String, val maxJobsCount: Int, blockingExecutionContext:
   val currentJobsCount: AtomicInteger = AtomicInteger(0)
   val finishedJobsCount: AtomicInteger = AtomicInteger(0)
 
-  val task: Runnable = new Runnable {
-    def run(): Unit = onTimer()
-  }
-
-  val f: ScheduledFuture[_] = ex.scheduleAtFixedRate(task, 0, 1, TimeUnit.SECONDS)
-  // f.cancel(false)
-
-  def enqueue(r: Request): Either[Unit, Unit] = {
+  def process(r: Request): Either[Err, Option[String]] = {
     if (currentJobsCount.get() >= maxJobsCount) {
-      log.error(s"Cannot enqueue job ${r.uuid}: limit of $maxJobsCount reached.")
-      Left(())
+      log.error(s"Cannot run job ${r.uuid}: limit of $maxJobsCount reached.")
+      Left(JobLimitErr(maxJobsCount))
     } else {
-      jobQueue.enqueue(
+      currentJobsCount.incrementAndGet()
+      val resultOrErr = run(
         (r, confClassTagToString(ClassTag(r.inputConf.getClass)))
       )
-      currentJobsCount.incrementAndGet()
-      log.info(s"Job ${r.uuid} enqueued.")
-      Right(())
+      log.info(s"Job ${r.uuid} received.")
+      resultOrErr
     }
   }
 
@@ -103,9 +94,7 @@ class JobRunService(id: String, val maxJobsCount: Int, blockingExecutionContext:
     case _                                                => "unknown"
   }
 
-  def getQueuedJobs: Seq[QueueableRequest] = jobQueue.map(_._1).toSeq
-
-  def runJdbc(request: Request): Unit = {
+  def runJdbc(request: Request): Either[Err, Option[String]] = {
     log.info("JDBC-to-JDBC: query started")
     import request._
     val fields: Set[String] = PatternFieldExtractor.extract(patterns)
@@ -124,9 +113,10 @@ class JobRunService(id: String, val maxJobsCount: Int, blockingExecutionContext:
         CoordinatorService.notifyJobCompleted(uuid, Some(new StreamRunException(error)))
       case Right(_) => log.info(s"Stream successfully started!")
     }
+    resultOrErr
   }
 
-  def runKafka(request: Request): Unit = {
+  def runKafka(request: Request): Either[Err, Option[String]] = {
     import request._
     val fields: Set[String] = PatternFieldExtractor.extract(patterns)
 
@@ -142,6 +132,7 @@ class JobRunService(id: String, val maxJobsCount: Int, blockingExecutionContext:
       case Left(error) => log.error(s"Cannot run request. Reason: $error")
       case Right(_)    => log.info(s"Stream successfully started!")
     }
+    resultOrErr
   }
 
   /*def dequeueAndRun(slots: Int): Unit = {
@@ -154,39 +145,23 @@ class JobRunService(id: String, val maxJobsCount: Int, blockingExecutionContext:
     }
   }*/
 
-  def dequeueAndRunSingleJob(): Unit = {
-    log.info(s"Running job ${jobQueue.head._1.uuid}")
-    val request = jobQueue.head
-    jobQueue.dequeue()
-    run(request)
-  }
-
-  def removeFromQueue(uuid: String): Option[Unit] = {
-    val job = jobQueue.find(_._1.uuid == uuid)
-    job match {
-      case Some(_) => {
-        // jobQueue.remove(value)
-        Some(())
-      }
-      case None => None
-    }
-  }
-
-  def queueAsScalaSeq: Seq[QueueableRequest] = jobQueue.map(_._1).toSeq
-
-  def run(typedRequest: TypedRequest): Unit = {
+  def run(typedRequest: TypedRequest): Either[Err, Option[String]] = {
     val (r, inClass) = typedRequest
     val request = r.asInstanceOf[Request]
     log.info(s"Dequeued job ${request.uuid}, sending")
     inClass match {
       case "from-jdbc" =>
-        runJdbc(request)
+        val result = runJdbc(request)
         runningJobsRequests(request.uuid) = request
+        result
       case "from-kafka" =>
-        runKafka(request)
+        val result = runKafka(request)
         runningJobsRequests(request.uuid) = request
+        result
       case _ =>
         log.error(s"Unknown job request type: IN: $inClass")
+        Left(InvalidRequest(s"Unknown job request type: IN: $inClass", errorCode = 4011))
+
     }
   }
 
@@ -291,12 +266,6 @@ class JobRunService(id: String, val maxJobsCount: Int, blockingExecutionContext:
   }
 
   def getRunningJobsIds: Seq[String] = runningStreams.filter { case (_, value) => value.get() }.keys.toSeq
-
-  def onTimer(): Unit = {
-    if (jobQueue.nonEmpty) {
-      dequeueAndRunSingleJob()
-    }
-  }
 
 }
 

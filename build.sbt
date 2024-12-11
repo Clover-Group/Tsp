@@ -25,7 +25,7 @@ lazy val launcher = "ru.itclover.tsp.http.Launcher"
 lazy val commonSettings = Seq(
   // Improved type inference via the fix for SI-2712 (for Cats dep.)
   // Remove StringPlusAny wart because of false alarming on s-strings
-  wartremoverWarnings ++= Warts.unsafe.filter(w => w != Wart.DefaultArguments & w != Wart.StringPlusAny),
+  // wartremoverWarnings ++= Warts.unsafe.filter(w => w != Wart.DefaultArguments & w != Wart.StringPlusAny),
   //ghreleaseNotes := Utils.releaseNotes,
   //ghreleaseRepoOrg := "Clover-Group",
   //ghreleaseRepoName := "tsp",
@@ -200,7 +200,9 @@ lazy val dsl = project.in(file("dsl"))
   .settings(commonSettings)
   .settings(
     resolvers += "bintray-djspiewak-maven" at "https://dl.bintray.com/djspiewak/maven",
-    libraryDependencies ++=  Library.scalaTest ++ Library.logging ++ Library.parboiled ++ Library.sprayJson
+    libraryDependencies ++=  Library.scalaTest ++ Library.logging ++ Library.parboiled ++ Library.sprayJson,
+    // do not include ASTBuilider into the coverage due to wrong coverage reports (not including everything inside the macros as covered)
+    coverageExcludedFiles := ".*ASTBuilder"
   ).dependsOn(core)
 
 lazy val itValid = project.in(file("integration/correctness"))
@@ -292,6 +294,6 @@ addCommandAlias("lint", "; compile:scalafix --check ; test:scalafix --check")
 addCommandAlias("fix", "all compile:scalafix test:scalafix")
 addCommandAlias("fmt", "; scalafmtSbt; scalafmtAll; test:scalafmtAll")
 addCommandAlias("chk", "; scalafmtSbtCheck; scalafmtCheck; test:scalafmtCheck")
-addCommandAlias("cov", "; clean; coverage; test; coverageReport; coverageAggregate")
+addCommandAlias("cov", "; clean; coverage; test; coverageAggregate")
 addCommandAlias("tree", "dependencyTree::toFile target/tree.txt -f")
 addCommandAlias("pub", "docker:publish")

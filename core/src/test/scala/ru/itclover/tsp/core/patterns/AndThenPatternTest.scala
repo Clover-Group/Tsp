@@ -38,7 +38,7 @@ class AndThenPatternTest extends AnyFlatSpec with Matchers {
     val out = new ArrayBuffer[IdxValue[_]]()
     StateMachine[Id].run(pattern, (1, 1), events, pattern.initialState(), (x: IdxValue[_]) => out += x, 1)
     out.size shouldBe 100
-    out.foreach(_.value.isFail should be(true))
+    out.foreach(_.value.isSuccess should be(false))
   }
 
   it should "parse combination of and, andThen in rule" in {

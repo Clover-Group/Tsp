@@ -27,6 +27,7 @@ object Version {
 
   val testContainers = "0.41.4"
   val testContainersKafka = "1.20.3"
+  val testContainersRedis = "2.2.2"
   val postgres = "42.7.4"
 
   val avro = "1.8.2"
@@ -153,6 +154,7 @@ object Library {
   val testContainers: Seq[ModuleID] = Seq(
     "com.dimafeng" %% "testcontainers-scala" % Version.testContainers % "test",
     "com.dimafeng" %% "testcontainers-scala-clickhouse" % Version.testContainers % "test",
+    "com.dimafeng" %% "testcontainers-scala-redis" % Version.testContainers % "test",
     "org.testcontainers" % "testcontainers" % Version.testContainersKafka % "test",
     "org.testcontainers" % "clickhouse" % Version.testContainersKafka % "test",
     "org.testcontainers" % "kafka" % Version.testContainersKafka % "test"

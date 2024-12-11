@@ -19,15 +19,19 @@ object ASTType {
 
   def of[T](implicit ct: ClassTag[T]): ASTType = ct.runtimeClass match {
     // Basic check, if T isn't lost
-    case c if c.isAssignableFrom(classOf[Double])           => DoubleASTType
-    case c if c.isAssignableFrom(classOf[Long])             => LongASTType
-    case c if c.isAssignableFrom(classOf[Int])              => IntASTType
-    case c if c.isAssignableFrom(classOf[Short])            => IntASTType
-    case c if c.isAssignableFrom(classOf[Byte])             => IntASTType
-    case c if c.isAssignableFrom(classOf[Boolean])          => BooleanASTType
-    case c if c.isAssignableFrom(classOf[String])           => StringASTType
-    case c if c.isAssignableFrom(classOf[Nothing])          => NullASTType
-    case c if classOf[java.lang.Number].isAssignableFrom(c) => DoubleASTType
+    case c if c.isAssignableFrom(classOf[Int])               => IntASTType
+    case c if c.isAssignableFrom(classOf[Short])             => IntASTType
+    case c if c.isAssignableFrom(classOf[Byte])              => IntASTType
+    case c if c.isAssignableFrom(classOf[java.lang.Integer]) => IntASTType
+    case c if c.isAssignableFrom(classOf[Long])              => LongASTType
+    case c if c.isAssignableFrom(classOf[java.lang.Long])    => LongASTType
+    case c if c.isAssignableFrom(classOf[Boolean])           => BooleanASTType
+    case c if c.isAssignableFrom(classOf[java.lang.Boolean]) => BooleanASTType
+    case c if c.isAssignableFrom(classOf[Double])            => DoubleASTType
+    case c if c.isAssignableFrom(classOf[java.lang.Double])  => DoubleASTType
+    case c if c.isAssignableFrom(classOf[String])            => StringASTType
+    case c if c.isAssignableFrom(classOf[Nothing])           => NullASTType
+    case c if classOf[java.lang.Number].isAssignableFrom(c)  => DoubleASTType
 
     // Extra check, in case type T is lost
     case c
