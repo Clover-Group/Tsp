@@ -33,5 +33,9 @@ object ErrorsADT {
     override val error = Option(ex.getMessage).getOrElse(ex.toString)
   }
 
+  case class JobLimitErr(jobLimit: Int, errorCode: Int = 5080) extends RuntimeErr {
+    override val error = s"Job limit of $jobLimit exceeded"
+  }
+
   // case class RecoverableError() extends RuntimeError
 }

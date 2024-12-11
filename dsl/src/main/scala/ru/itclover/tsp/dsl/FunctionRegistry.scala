@@ -46,6 +46,10 @@ class FunctionRegistry(
       .find(_._2 > 0)
       .map { case ((_, f), c) => (f, c) }
 
+  override def equals(that: Any): Boolean = that match {
+    case reg: FunctionRegistry => functions == reg.functions && reducers == reg.reducers
+  }
+
 }
 
 object FunctionRegistry {
@@ -381,7 +385,7 @@ object DefaultFunctions extends LazyLogging {
       ("jsonarrayvalue", Seq(StringASTType, IntASTType)) -> (
         (
           (xs: Seq[Any]) =>
-            (toResult[String](xs(0)), toResult[Double](xs(1))) match {
+            (toResult[String](xs(0)), toResult[Int](xs(1))) match {
               case (Succ(t0), Succ(t1)) =>
                 Result.succ(
                   Try {

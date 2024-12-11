@@ -18,10 +18,10 @@ class ASTTest extends AnyFlatSpec with Matchers with ScalaCheckPropertyChecks {
   // TODO: no refactoring in loop compare in case of class derivation
   "AST types" should "correctly construct from Scala types" in {
     // TODO: ints and longs are somehow promoted to double
-    // ASTType.of[Int] shouldBe IntASTType
-    // ASTType.of[java.lang.Integer] shouldBe IntASTType
-    // ASTType.of[Long] shouldBe LongASTType
-    // ASTType.of[java.lang.Long] shouldBe LongASTType
+    ASTType.of[Int] shouldBe IntASTType
+    ASTType.of[java.lang.Integer] shouldBe IntASTType
+    ASTType.of[Long] shouldBe LongASTType
+    ASTType.of[java.lang.Long] shouldBe LongASTType
     ASTType.of[Boolean] shouldBe BooleanASTType
     ASTType.of[java.lang.Boolean] shouldBe BooleanASTType
     ASTType.of[Double] shouldBe DoubleASTType

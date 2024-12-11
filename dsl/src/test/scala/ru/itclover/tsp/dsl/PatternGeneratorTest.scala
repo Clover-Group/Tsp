@@ -18,7 +18,8 @@ class PatternGeneratorTest extends AnyFlatSpec with Matchers with ScalaCheckProp
     "longSensor"    -> ClassTag.Long,
     "boolSensor"    -> ClassTag.Boolean,
     "doubleSensor1" -> ClassTag.Double,
-    "doubleSensor2" -> ClassTag.Double
+    "doubleSensor2" -> ClassTag.Double,
+    "stringSensor"  -> implicitly[ClassTag[String]]
   )
 
   given Conversion[String, String] = _.toString
@@ -36,8 +37,15 @@ class PatternGeneratorTest extends AnyFlatSpec with Matchers with ScalaCheckProp
       "sin(doubleSensor1) >= 0.5 for 5 min andThen intSensor > 42",
       "tan(doubleSensor1) >= 1 for 5 hr andThen avg(doubleSensor2, 3 sec) > 42",
       "count(doubleSensor1, 4 sec) * sum(doubleSensor2, 3 sec) < 9",
-      "lag(doubleSensor1, 10 sec) > doubleSensor1"
-      // "boolSensor = true andThen boolSensor != false"
+      "lag(doubleSensor1, 10 sec) > doubleSensor1",
+      "boolSensor = true andThen boolSensor != false",
+      "wait(10 sec, doubleSensor1 > 0 for 5 sec) or doubleSensor2 > 0 for 5 sec 3 to 5 times",
+      "avgOf(doubleSensor1, doubleSensor2; _ > 0) > 5",
+      "stringSensor = '123'",
+      "stringSensor != '456'",
+      "stringSensor->>'1' = '3'",
+      "stringSensor->2 < '4'",
+      "maxOf(doubleSensor1, doubleSensor2) <= stringSensor as float64"
     )
 
     patternsList

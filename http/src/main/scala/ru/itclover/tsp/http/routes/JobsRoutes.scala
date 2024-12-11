@@ -2,7 +2,7 @@ package ru.itclover.tsp.http.routes
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
-import akka.http.scaladsl.model.StatusCodes.{PermanentRedirect, LoopDetected}
+import akka.http.scaladsl.model.StatusCodes.{PermanentRedirect, LoopDetected, BadRequest, InternalServerError}
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import akka.stream.Materializer
@@ -19,6 +19,10 @@ import spray.json._
 import scala.concurrent.ExecutionContextExecutor
 import ru.itclover.tsp.http.Launcher
 import ru.itclover.tsp.http.domain.output.FailureResponse
+import ru.itclover.tsp.streaming.utils.ErrorsADT.JobLimitErr
+import ru.itclover.tsp.streaming.utils.ErrorsADT.ConfigErr
+import ru.itclover.tsp.streaming.utils.ErrorsADT.RuntimeErr
+import ru.itclover.tsp.http.domain.output.SuccessfulResponse
 
 trait JobsRoutes extends RoutesProtocols {
   implicit val executionContext: ExecutionContextExecutor
@@ -31,31 +35,51 @@ trait JobsRoutes extends RoutesProtocols {
 
   Logger[JobsRoutes]
 
+  implicit object statusFormat extends JsonFormat[Map[String, String | Int]] {
+
+    override def read(json: JsValue): Map[String, String | Int] = json match {
+      case JsObject(fields) =>
+        fields.map { case (k, v) =>
+          v match {
+            case JsNumber(value) => (k, value.toIntExact)
+            case JsString(value) => (k, value)
+            case _               => throw DeserializationException(s"Value must be string or number, but $v found")
+          }
+        }
+      case _ => throw DeserializationException(s"Value must be object, but $json found")
+    }
+
+    override def write(obj: Map[String, String | Int]): JsValue = JsObject(obj.map {
+      case (k, v: String) => (k, JsString(v))
+      case (k, v: Int)    => (k, JsNumber(v))
+    })
+
+  }
+
   val route: Route =
     path("job" / "submit"./) {
       entity(as[FindPatternsRequest[RowWithIdx, String, Any, Row]]) { request =>
-        val result = jobRunService.enqueue(request)
-        if (result.isRight) {
-          complete(Map("status" -> s"Job ${request.uuid} enqueued.").toJson(propertyFormat))
-        } else {
-          complete((LoopDetected, FailureResponse(5080, "Jobs limit reached", Seq.empty)))
+        val result = jobRunService.process(request)
+        result match {
+          case Right(_) =>
+            complete(
+              Map(
+                "status"            -> s"Job ${request.uuid} received.",
+                "currentJobsCount"  -> jobRunService.currentJobsCount.get(),
+                "finishedJobsCount" -> jobRunService.finishedJobsCount.get(),
+                "maxJobsCount"      -> jobRunService.maxJobsCount
+              ).toJson
+            )
+          case Left(e) =>
+            e match {
+              case jle: JobLimitErr => complete((LoopDetected, FailureResponse(jle.errorCode, jle.error, Seq.empty)))
+              case ce: ConfigErr    => complete((BadRequest, FailureResponse(ce)))
+              case re: RuntimeErr   => complete((InternalServerError, FailureResponse(re)))
+              case _                => complete((InternalServerError, FailureResponse(5990, "Unknown error", Seq.empty)))
+            }
         }
       }
-    } ~
-      path("queue" / "show") {
-        complete(
-          jobRunService.queueAsScalaSeq
-            .map(_.asInstanceOf[FindPatternsRequest[RowWithIdx, String, Any, Row]])
-            .toList
-            .toJson
-        )
-      } ~
-      path("queue" / Segment / "remove") { uuid =>
-        jobRunService.removeFromQueue(uuid) match {
-          case Some(()) => complete(Map("status" -> s"Job $uuid removed from queue.").toJson(propertyFormat))
-          case None     => redirect(s"/job/$uuid/stop", PermanentRedirect)
-        }
-      }
+    }
 
 }
 

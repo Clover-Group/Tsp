@@ -186,6 +186,15 @@ object CheckpointingService {
       srv
   }
 
+  def forceCreate(redisUri: Option[String]) = {
+    val srv = redisUri match {
+      case Some(uri) => RedisCheckpointingService(uri)
+      case None      => MemoryCheckpointingService()
+    }
+    service = Some(srv)
+    srv
+  }
+
   def updateCheckpointRead(uuid: String, newRowsRead: Long, newStates: Map[RawPattern, State[Segment]]): Unit =
     service.map(_.updateCheckpointRead(uuid, newRowsRead, newStates)).getOrElse(())
 

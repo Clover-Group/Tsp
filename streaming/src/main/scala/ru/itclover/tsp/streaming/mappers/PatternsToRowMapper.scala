@@ -128,7 +128,7 @@ case class PatternsToRowMapper[Event, EKey](schema: EventSchema) {
       case "int16"   => Try(value.toShort).getOrElse(0.toShort)
       case "int32"   => Try(value.toInt).getOrElse(0.toInt)
       case "int64"   => Try(value.toLong).getOrElse(0.toLong)
-      case "boolean" => Try(value != "0" && value != "false" && value != "off").getOrElse(false)
+      case "boolean" => Try(value != "0" && value != "false" && value != "off" && value != "no").getOrElse(false)
       case "string"  => value
       case "float32" => Try(value.toFloat).orElse(Try(Timestamp.valueOf(value).getTime() / 1000.0f)).getOrElse(Float.NaN)
       case "float64" =>

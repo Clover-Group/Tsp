@@ -12,7 +12,7 @@ import scala.util.Try
 
 // JsonFormats contain Any fields and converted via asInstanceOf(). Here, it's safe
 @SuppressWarnings(Array("org.wartremover.warts.Any", "org.wartremover.warts.AsInstanceOf"))
-trait RoutesProtocols extends SprayJsonSupport with DefaultJsonProtocol {
+trait RoutesProtocols extends SprayJsonSupport with DefaultJsonProtocol with GeneralProtocols {
 
   implicit object propertyFormat extends JsonFormat[AnyRef] {
 
@@ -272,8 +272,6 @@ trait RoutesProtocols extends SprayJsonSupport with DefaultJsonProtocol {
       }
 
     }
-
-  implicit val rawPatternFmt: RootJsonFormat[RawPattern] = jsonFormat4(RawPattern.apply)
 
   implicit def patternsRequestFmt[Event, EKey, EValue, OutEvent](implicit
     inFormat: JsonFormat[InputConf[Event, EKey, EValue]],
