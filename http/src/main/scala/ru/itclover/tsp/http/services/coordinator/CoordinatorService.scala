@@ -29,6 +29,8 @@ case class CoordinatorService(
     advertisedPort: Option[Int]
   )
 
+  case class UnregisterMessage(uuid: String)
+
   case class JobStartedMessage(jobId: String)
 
   case class JobCompletedMessage(
@@ -41,7 +43,8 @@ case class CoordinatorService(
   )
 
   object MessageJsonProtocol extends DefaultJsonProtocol {
-    implicit val versionMessageFormat: RootJsonFormat[RegisterMessage] = jsonFormat4(RegisterMessage.apply)
+    implicit val registerMessageFormat: RootJsonFormat[RegisterMessage] = jsonFormat4(RegisterMessage.apply)
+    implicit val unregisterMessageFormat: RootJsonFormat[UnregisterMessage] = jsonFormat1(UnregisterMessage.apply)
     implicit val jobStartedMessageFormat: RootJsonFormat[JobStartedMessage] = jsonFormat1(JobStartedMessage.apply)
     implicit val jobCompletedMessageFormat: RootJsonFormat[JobCompletedMessage] = jsonFormat6(JobCompletedMessage.apply)
   }
@@ -143,6 +146,32 @@ case class CoordinatorService(
       }
   }
 
+  def notifyUnregister(): Unit = {
+    val uri = s"$coordUri/api/tspinteraction/unregister"
+    log.info(s"Notifying coordinator at $uri...")
+
+    val responseFuture: Future[HttpResponse] = Http().singleRequest(
+      HttpRequest(
+        method = HttpMethods.POST,
+        uri = uri,
+        entity = HttpEntity(
+          ContentTypes.`application/json`,
+          UnregisterMessage(
+            uuid
+          ).toJson.compactPrint
+        )
+      )
+    )
+
+    responseFuture
+      .onComplete {
+        case Success(res) => {
+          if (res.status.isFailure) log.error(s"Error: TSP coordinator returned ${res.status}: ${res.entity.toString}")
+        }
+        case Failure(ex) => log.error(s"Cannot connect to $uri: $ex")
+      }
+  }
+
   def errorIsFatal(error: Throwable): Boolean = {
     // TODO: which exceptions are fatal
     error match {
@@ -176,6 +205,7 @@ object CoordinatorService {
   def getTspId: String = service.map(_.uuid).getOrElse("")
 
   def notifyRegister(): Unit = service.map(_.notifyRegister()).getOrElse(())
+  def notifyUnregister(): Unit = service.map(_.notifyUnregister()).getOrElse(())
 
   def notifyJobStarted(jobId: String): Unit = service.map(_.notifyJobStarted(jobId)).getOrElse(())
 
