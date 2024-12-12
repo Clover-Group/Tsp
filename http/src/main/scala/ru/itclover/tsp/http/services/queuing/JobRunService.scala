@@ -240,6 +240,7 @@ class JobRunService(id: String, val maxJobsCount: Int, blockingExecutionContext:
           runningJobsRequests.remove(uuid)
           if (finishedJobsCount.get() == maxJobsCount) {
             log.warn(s"Limit of $maxJobsCount reached. Terminating...")
+            CoordinatorService.notifyUnregister()
             System.exit(0)
           }
         case Right(_) =>
@@ -252,6 +253,7 @@ class JobRunService(id: String, val maxJobsCount: Int, blockingExecutionContext:
           CheckpointingService.removeCheckpointAndState(uuid)
           if (finishedJobsCount.get() == maxJobsCount) {
             log.warn(s"Limit of $maxJobsCount reached. Terminating...")
+            CoordinatorService.notifyUnregister()
             System.exit(0)
           }
 
