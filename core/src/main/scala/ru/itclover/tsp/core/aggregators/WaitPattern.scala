@@ -18,7 +18,7 @@ import scala.collection.mutable as m
 case class WaitPattern[Event: IdxExtractor: TimeExtractor, S, T](
   override val inner: Pattern[Event, S, T],
   override val window: Window
-) extends AccumPattern[Event, S, T, T, WaitAccumState[T]] {
+) extends AccumPattern[Event, S, T, T, WaitAccumState[T]]:
 
   override def initialState(): AggregatorPState[S, T, WaitAccumState[T]] = AggregatorPState(
     inner.initialState(),
@@ -27,9 +27,7 @@ case class WaitPattern[Event: IdxExtractor: TimeExtractor, S, T](
     indexTimeMap = m.Queue.empty
   )
 
-}
-
-case class WaitAccumState[T]() extends AccumState[T, T, WaitAccumState[T]] {
+case class WaitAccumState[T]() extends AccumState[T, T, WaitAccumState[T]]:
 
   val log = Logger[WaitAccumState[T]]
 
@@ -52,9 +50,6 @@ case class WaitAccumState[T]() extends AccumState[T, T, WaitAccumState[T]] {
     window: Window,
     times: m.ArrayDeque[(Idx, Time)],
     idxValue: IdxValue[T]
-  ): (WaitAccumState[T], QI[T]) = {
+  ): (WaitAccumState[T], QI[T]) =
     log.debug("Wait operator is now redundant and deprecated, returning the inner results as-is");
     (WaitAccumState(), PQueue(idxValue))
-  }
-
-}

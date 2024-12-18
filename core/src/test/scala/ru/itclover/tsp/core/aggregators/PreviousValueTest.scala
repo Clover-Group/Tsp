@@ -24,11 +24,11 @@ class PreviousValueTest extends AnyWordSpec with Matchers {
 
     val pat = Patterns[EInt]
     import pat._
-    val events = (for (
-      time <- Timer(from = Instant.now());
-      idx  <- Increment;
-      row  <- Increment
-    )
+    val events =
+      (for
+        time <- Timer(from = Instant.now());
+        idx  <- Increment;
+        row  <- Increment
       yield Event[Int](time.toEpochMilli, idx.toLong, row, 0)).run(seconds = 100)
 
     "return prev values for success" in {

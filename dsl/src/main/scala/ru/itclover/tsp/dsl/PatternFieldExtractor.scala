@@ -7,27 +7,24 @@ import ru.itclover.tsp.core.io.{Decoder, Extractor, TimeExtractor}
 // Helper method to extract only the used fields (identifiers) from the list of patterns
 // Can use Any values.
 @SuppressWarnings(Array("org.wartremover.warts.Any"))
-object PatternFieldExtractor {
+object PatternFieldExtractor:
 
   def extract[E, EKey, EItem](patterns: Seq[RawPattern])(implicit
     fieldToEKey: String => EKey
-  ): Set[EKey] = {
+  ): Set[EKey] =
     given Conversion[String, EKey] = fieldToEKey(_)
 
-    val dummyTimeExtractor = new TimeExtractor[E] {
+    val dummyTimeExtractor = new TimeExtractor[E]:
       override def apply(e: E): Time = Time(0)
-    }
     // Extracting nulls and converting to T.
     @SuppressWarnings(Array("org.wartremover.warts.Null", "org.wartremover.warts.AsInstanceOf"))
-    val dummyExtractor = new Extractor[E, EKey, EItem] {
+    val dummyExtractor = new Extractor[E, EKey, EItem]:
       override def apply[T](e: E, k: EKey)(implicit d: Decoder[EItem, T]): T = null.asInstanceOf[T]
-    }
 
-    val dummyIdxExtractor = new IdxExtractor[E] {
+    val dummyIdxExtractor = new IdxExtractor[E]:
       override def apply(e: E): Idx = 0L
 
       override def compare(x: Idx, y: Idx): Int = 0
-    }
 
     val gen = ASTPatternGenerator[E, EKey, EItem]()(
       dummyIdxExtractor,
@@ -43,6 +40,3 @@ object PatternFieldExtractor {
           .getOrElse(Set.empty)
       }
       .foldLeft(Set.empty[EKey])(_ ++ _)
-  }
-
-}

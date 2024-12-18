@@ -6,7 +6,7 @@ import org.scalatest.flatspec._
 import org.scalatest.matchers.should._
 import ru.itclover.tsp.core.RawPattern
 
-class PatternsValidatorTest extends AnyFlatSpec with Matchers with ScalaCheckPropertyChecks {
+class PatternsValidatorTest extends AnyFlatSpec with Matchers with ScalaCheckPropertyChecks:
   import TestEvents._
 
   val patterns = Seq(
@@ -30,9 +30,6 @@ class PatternsValidatorTest extends AnyFlatSpec with Matchers with ScalaCheckPro
     "anySensor"     -> "any"
   )
 
-  "Pattern validator" should "validate patterns" in {
+  "Pattern validator" should "validate patterns" in:
     PatternsValidator
       .validate[TestEvent](patterns.zipWithIndex.map(pi => RawPattern(pi._2, pi._1, None)), fieldsTypes)()
-  }
-
-}

@@ -1,7 +1,6 @@
 package ru.itclover.tsp.http.routes
 
 import akka.actor.ActorSystem
-import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import akka.http.scaladsl.model.StatusCodes.BadRequest
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
@@ -28,13 +27,13 @@ import akka.http.scaladsl.server.StandardRoute
 import scala.util.Try
 import scala.util.Properties
 
-object MonitoringRoutes {
+object MonitoringRoutes:
 
   private val log = Logger[MonitoringRoutes]
 
   def fromExecutionContext(
     jobRunService: JobRunService
-  )(implicit as: ActorSystem, am: Materializer): Reader[ExecutionContextExecutor, Route] = {
+  )(implicit as: ActorSystem, am: Materializer): Reader[ExecutionContextExecutor, Route] =
 
     log.debug("fromExecutionContext started")
 
@@ -47,12 +46,9 @@ object MonitoringRoutes {
       }.route
     }
 
-  }
-
   log.debug("fromExecutionContext finished")
-}
 
-trait MonitoringRoutes extends RoutesProtocols {
+trait MonitoringRoutes extends RoutesProtocols:
   implicit val jrs: JobRunService
 
   implicit val executionContext: ExecutionContextExecutor
@@ -62,7 +58,7 @@ trait MonitoringRoutes extends RoutesProtocols {
   val logger = Logger[MonitoringRoutes]
 
   val route: Route = path("job" / Segment / "status") { uuid =>
-    CheckpointingService.getCheckpoint(uuid) match {
+    CheckpointingService.getCheckpoint(uuid) match
       case Some(details) =>
         complete(
           Map("rowsRead" -> details.readRows, "rowsWritten" -> details.totalWrittenRows)
@@ -70,9 +66,8 @@ trait MonitoringRoutes extends RoutesProtocols {
         )
       case None => complete((BadRequest, FailureResponse(4006, "No such job.", Seq.empty)))
       // case Failure(err)           => complete((InternalServerError, FailureResponse(5005, err)))
-    }
   } ~ path("job" / Segment / "request") { uuid =>
-    jrs.runningJobsRequests.get(uuid) match {
+    jrs.runningJobsRequests.get(uuid) match
       case Some(r) =>
         complete(
           this
@@ -80,35 +75,31 @@ trait MonitoringRoutes extends RoutesProtocols {
             .write(r.asInstanceOf[FindPatternsRequest[RowWithIdx, String, Any, Row]])
         )
       case None => complete((BadRequest, FailureResponse(4006, "No such job.", Seq.empty)))
-    }
   } ~ path("job" / Segment / "stop") { uuid =>
-    jrs.getRunningJobsIds.find(_ == uuid) match {
+    jrs.getRunningJobsIds.find(_ == uuid) match
       case Some(_) =>
         jrs.stopStream(uuid)
         complete(Map("message" -> s"Job $uuid stopped.").toJson(propertyFormat))
       case None =>
         complete((BadRequest, FailureResponse(4006, "No such job.", Seq.empty)))
-    }
   } ~ path("jobs" / "overview") {
     complete(jrs.getRunningJobsIds.toJson)
   } ~ path("jobs" / Segment / "csvs") { uuid =>
-    var r: StandardRoute = complete(
-      (BadRequest, FailureResponse(4007, "CSV output not enabled, set CSV_OUTPUT_ENABLED to 1 to see CSVs", Seq.empty))
-    )
-    if (Properties.envOrElse("CSV_OUTPUT_ENABLED", "0") == "1") {
+    if Properties.envOrElse("CSV_OUTPUT_ENABLED", "0") == "1" then
       val result = Try(ArchiveUtils.packCSV(uuid))
-      if (result.isSuccess) {
-        r = complete(HttpEntity.fromFile(MediaTypes.`application/zip`, new File(s"/tmp/sparse_intermediate/$uuid.zip")))
-      } else {
-        r = complete(
+      if result.isSuccess then
+        complete(HttpEntity.fromFile(MediaTypes.`application/zip`, new File(s"/tmp/sparse_intermediate/$uuid.zip")))
+      else
+        complete(
           (
             BadRequest,
             FailureResponse(4008, "Error occurred during archiving CSV outputs, job may not exist", Seq.empty)
           )
         )
-      }
-    }
-    r
+    else
+      complete(
+        (BadRequest, FailureResponse(4007, "CSV output not enabled, set CSV_OUTPUT_ENABLED to 1 to see CSVs", Seq.empty))
+      )
   } ~
     path("metainfo" / "getVersion") {
       complete(
@@ -120,8 +111,5 @@ trait MonitoringRoutes extends RoutesProtocols {
           )
         )
       )
-    } ~ path("jobs" / "limits") {
+    } ~ path("jobs" / "limits"):
       complete(List(jrs.currentJobsCount.get(), jrs.finishedJobsCount.get(), jrs.maxJobsCount).toJson)
-    }
-
-}

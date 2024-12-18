@@ -1,7 +1,7 @@
 package ru.itclover.tsp.dsl
 
 //
-object UtilityTypes {
+object UtilityTypes:
 
   type And[+L, +R] = (L, R)
 
@@ -11,12 +11,8 @@ object UtilityTypes {
 
   type ThrowableOr[T] = Either[Throwable, T]
 
-  case class ParseException(errs: Seq[String]) extends Throwable {
+  case class ParseException(errs: Seq[String]) extends Throwable:
     override def getMessage: String = errs.mkString("\n")
-  }
 
-  object ParseException {
+  object ParseException:
     def apply(info: String): ParseException = ParseException(Seq(info))
-  }
-
-}

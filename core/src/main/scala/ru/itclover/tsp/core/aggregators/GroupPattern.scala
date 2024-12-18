@@ -19,7 +19,7 @@ import scala.collection.{mutable => m}
 case class GroupPattern[Event: IdxExtractor: TimeExtractor, S, T: Group](
   override val inner: Pattern[Event, S, T],
   override val window: Window
-) extends AccumPattern[Event, S, T, GroupAccumResult[T], GroupAccumState[T]] {
+) extends AccumPattern[Event, S, T, GroupAccumResult[T], GroupAccumState[T]]:
 
   val group: Group[T] = implicitly[Group[T]]
 
@@ -31,27 +31,23 @@ case class GroupPattern[Event: IdxExtractor: TimeExtractor, S, T: Group](
       indexTimeMap = m.Queue.empty
     )
 
-}
-
 case class GroupAccumState[T: Group](
   lastValue: Option[GroupAccumResult[T]],
   windowQueue: m.ArrayDeque[GroupAccumValue[T]]
-) extends AccumState[T, GroupAccumResult[T], GroupAccumState[T]] {
+) extends AccumState[T, GroupAccumResult[T], GroupAccumState[T]]:
 
   override def updated(
     window: Window,
     times: m.ArrayDeque[(Idx, Time)],
     idxValue: IdxValue[T]
-  ): (GroupAccumState[T], QI[GroupAccumResult[T]]) = {
+  ): (GroupAccumState[T], QI[GroupAccumResult[T]]) =
 
     val (newLastValue, newWindowQueue, newOutputQueue) =
-      times.foldLeft(Tuple3(lastValue, windowQueue, PQueue.empty[GroupAccumResult[T]])) {
+      times.foldLeft(Tuple3(lastValue, windowQueue, PQueue.empty[GroupAccumResult[T]])):
         case ((lastValue, windowQueue, outputQueue), (idx, time)) =>
           addOnePoint(time, idx, window, idxValue.value, lastValue, windowQueue, outputQueue)
-      }
 
     GroupAccumState(newLastValue, newWindowQueue) -> newOutputQueue
-  }
 
   def addOnePoint(
     time: Time,
@@ -61,7 +57,7 @@ case class GroupAccumState[T: Group](
     lastValue: Option[GroupAccumResult[T]],
     windowQueue: m.ArrayDeque[GroupAccumValue[T]],
     outputQueue: QI[GroupAccumResult[T]]
-  ): (Option[GroupAccumResult[T]], m.ArrayDeque[GroupAccumValue[T]], QI[GroupAccumResult[T]]) = {
+  ): (Option[GroupAccumResult[T]], m.ArrayDeque[GroupAccumValue[T]], QI[GroupAccumResult[T]]) =
     value
       .map { t =>
         val newLastValue = lastValue
@@ -87,9 +83,6 @@ case class GroupAccumState[T: Group](
         )
       }
       .getOrElse(Tuple3(lastValue, windowQueue, outputQueue))
-  }
-
-}
 
 case class GroupAccumValue[T](idx: Idx, time: Time, value: T)
 

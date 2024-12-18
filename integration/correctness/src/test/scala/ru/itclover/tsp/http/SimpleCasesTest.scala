@@ -11,8 +11,7 @@ import ru.itclover.tsp.http.services.queuing.JobRunService
 import ru.itclover.tsp.streaming.io.{IntESValue, StringESValue}
 
 import scala.concurrent.duration.FiniteDuration
-import scala.jdk.DurationConverters._
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 //import com.google.common.util.concurrent.ThreadFactoryBuilder
 
@@ -23,11 +22,10 @@ import org.scalatest.flatspec._
 import scala.util.Failure
 // import org.scalatest.concurrent.Waiters._
 // import org.testcontainers.containers.Network
-import org.testcontainers.containers.wait.strategy.Wait
 import ru.itclover.tsp.core.RawPattern
 import ru.itclover.tsp.http.domain.input.FindPatternsRequest
 import ru.itclover.tsp.http.protocols.RoutesProtocols
-import ru.itclover.tsp.http.utils.{JDBCContainer, SqlMatchers}
+import ru.itclover.tsp.http.utils.SqlMatchers
 import ru.itclover.tsp.streaming.io.{JDBCInputConf, KafkaInputConf, NarrowDataUnfolding, WideDataFilling}
 import ru.itclover.tsp.streaming.io.{JDBCOutputConf, NewRowSchema}
 import ru.itclover.tsp.streaming.utils.Files
@@ -44,6 +42,7 @@ import ru.itclover.tsp.streaming.checkpointing.CheckpointingService
 import ru.itclover.tsp.dsl.PatternsValidatorConf
 import ru.itclover.tsp.http.protocols.PatternsValidatorProtocols
 import ru.itclover.tsp.http.domain.output.FailureResponse
+import org.testcontainers.utility.DockerImageName
 
 // In test cases, 'should' expressions are non-unit. Suppressing wartremover warnings about it
 // Also, this test seems to be heavily relying on Any. But still TODO: Investigate
@@ -55,7 +54,7 @@ class SimpleCasesTest
     with HttpService
     with ForAllTestContainer
     with RoutesProtocols
-    with PatternsValidatorProtocols {
+    with PatternsValidatorProtocols:
   implicit override val executionContext: ExecutionContextExecutor = scala.concurrent.ExecutionContext.global
 
   override val jobRunService: JobRunService = JobRunService.getOrCreate("mgr", 5000, executionContext)
@@ -81,12 +80,15 @@ class SimpleCasesTest
   val coordinatorPort = 8181
   val redisPort = 16379
 
-  implicit val clickhouseContainer: ClickHouseContainer = ClickHouseContainer("clickhouse/clickhouse-server:23.2")
+  implicit val clickhouseContainer: ClickHouseContainer = ClickHouseContainer(
+    DockerImageName.parse("clickhouse/clickhouse-server:23.2")
+  )
+
   val wrongJdbcUrl = "jdbc:clickhouse://10.10.10.10:8123/default"
 
   val kafkaContainer = KafkaContainer()
 
-  val redisContainer = RedisContainer("valkey/valkey:8.0.1")
+  val redisContainer = RedisContainer(DockerImageName.parse("valkey/valkey:8.0.1"))
   redisContainer.container.setPortBindings(List(s"$redisPort:6379").asJava)
 
   val coordinatorContainer = GenericContainer("clovergrp/tsp-coordinator:1.3.13")
@@ -109,10 +111,9 @@ class SimpleCasesTest
 
   val patternsString: Try[String] = Files.readFile(patternsPath)
 
-  val fileSourceString = patternsString match {
+  val fileSourceString = patternsString match
     case Success(some) => some
     case _             => ""
-  }
 
   val jsonObject = fileSourceString.parseJson
   val casesPatterns = jsonObject.convertTo[Seq[RawPattern]].map(p => (p.id -> p)).toMap
@@ -121,10 +122,9 @@ class SimpleCasesTest
 
   val patternsStringIvolga: Try[String] = Files.readFile(patternsPathIvolga)
 
-  val fileSourceStringIvolga = patternsStringIvolga match {
+  val fileSourceStringIvolga = patternsStringIvolga match
     case Success(some) => some
     case _             => ""
-  }
 
   val jsonObjectIvolga = fileSourceStringIvolga.parseJson
   val casesPatternsIvolga = jsonObjectIvolga.convertTo[Seq[RawPattern]].map(p => (p.id -> p)).toMap
@@ -132,10 +132,9 @@ class SimpleCasesTest
   val coreIncidentsPath = s"${filesPath}/core/incidents.json"
   val incidentsString: Try[String] = Files.readFile(coreIncidentsPath)
 
-  val fileSourceStringInc = incidentsString match {
+  val fileSourceStringInc = incidentsString match
     case Success(some) => some
     case _             => ""
-  }
 
   val jsonObjectInc = fileSourceStringInc.parseJson
   val coreRawIncidents = jsonObjectInc.convertTo[Map[String, String]]
@@ -145,10 +144,9 @@ class SimpleCasesTest
   val ivolgaIncidentsPath = s"${filesPath}/ivolga/incidents.json"
   val ivolgaIncidentsString: Try[String] = Files.readFile(ivolgaIncidentsPath)
 
-  val fileSourceStringIvolgaInc = ivolgaIncidentsString match {
+  val fileSourceStringIvolgaInc = ivolgaIncidentsString match
     case Success(some) => some
     case _             => ""
-  }
 
   val jsonObjectIvolgaInc = fileSourceStringIvolgaInc.parseJson
   val ivolgaIncidents = jsonObjectIvolgaInc.convertTo[Map[String, String]]
@@ -325,7 +323,7 @@ class SimpleCasesTest
     rowSchema = wideToKafkaRowSchema
   )
 
-  override def afterStart(): Unit = {
+  override def afterStart(): Unit =
     super.afterStart()
 
     val chScripts: Seq[String] = Seq(
@@ -386,8 +384,8 @@ class SimpleCasesTest
         .emits(data)
         .map { row =>
           val convertedRow: Seq[Any] = row.indices.map(idx =>
-            if (numberIndices.contains(idx)) {
-              if (row(idx) == "\\N") Double.NaN else row(idx).toDouble
+            if numberIndices.contains(idx) then {
+              if row(idx) == "\\N" then Double.NaN else row(idx).toDouble
             } else row(idx)
           )
           val msgKey = UUID.randomUUID().toString
@@ -411,7 +409,6 @@ class SimpleCasesTest
         .unsafeRunSync()
 
     })
-  }
 
   def firstValidationQuery(table: String, numbers: Seq[Range]) = s"""
        SELECT number, c
@@ -426,44 +423,38 @@ class SimpleCasesTest
   val secondValidationQuery = "SELECT id, toUnixTimestamp(from) AS from_ts, " +
     "toUnixTimestamp(to) AS to_ts FROM %s ORDER BY id, from_ts, to_ts"
 
-  override def afterAll(): Unit = {
+  override def afterAll(): Unit =
     super.afterAll()
     clickhouseContainer.stop()
     container.stop()
-  }
 
   // Here, default argument for `epsilon` is useful.
   @SuppressWarnings(Array("org.wartremover.warts.DefaultArguments"))
-  def alertByQuery(expectedValues: Seq[Seq[Double]], query: String, epsilon: Double = 0.0001): Assertion = {
-    Try(checkByQuery(expectedValues, query, epsilon)) match {
+  def alertByQuery(expectedValues: Seq[Seq[Double]], query: String, epsilon: Double = 0.0001): Assertion =
+    Try(checkByQuery(expectedValues, query, epsilon)) match
       case Failure(exception) =>
         alert(exception.getMessage)
         assert(true)
       case Success(value) =>
         value
-    }
-  }
 
-  "Data" should "load properly" in {
+  "Data" should "load properly" in:
     checkByQuery(List(List(53.0)), "SELECT COUNT(*) FROM `2te116u_tmy_test_simple_rules`")
     checkByQuery(List(List(150.0)), "SELECT COUNT(*) FROM `ivolga_test_narrow`")
     checkByQuery(List(List(48.0)), "SELECT COUNT(*) FROM `ivolga_test_wide`")
     checkByQuery(List(List(159.0)), "SELECT COUNT(*) FROM math_test")
-  }
 
-  "Cases 1-17, 43-53" should "work in wide table" in {
+  "Cases 1-17, 43-53" should "work in wide table" in:
     casesPatterns.keys.foreach { id =>
       Post(
         submitUrl,
         FindPatternsRequest(s"17wide_$id", wideInputConf, Seq(wideOutputConf), 50, List(casesPatterns(id)))
       ) ~>
-      route ~> check {
-        withClue(s"Pattern ID: $id") {
+      route ~> check:
+        withClue(s"Pattern ID: $id"):
           status shouldEqual StatusCodes.OK
-        }
-      }
     }
-    Thread.sleep(40000)
+    Thread.sleep(15000)
     alertByQuery(
       incidentsCount
         .map { case (k, v) =>
@@ -474,21 +465,18 @@ class SimpleCasesTest
       firstValidationQuery("events_wide_test", numbersToRanges(casesPatterns.keys.map(_.toInt).toList.sorted))
     )
     alertByQuery(incidentsTimestamps, secondValidationQuery.format("events_wide_test"))
-  }
 
-  "Cases 1-17, 43-53" should "work in narrow table" in {
+  "Cases 1-17, 43-53" should "work in narrow table" in:
     casesPatterns.keys.foreach { id =>
       Post(
         submitUrl,
         FindPatternsRequest(s"17narrow_$id", narrowInputConf, Seq(narrowOutputConf), 50, List(casesPatterns(id)))
       ) ~>
-      route ~> check {
-        withClue(s"Pattern ID: $id") {
+      route ~> check:
+        withClue(s"Pattern ID: $id"):
           status shouldEqual StatusCodes.OK
-        }
-      }
     }
-    Thread.sleep(40000)
+    Thread.sleep(15000)
     alertByQuery(
       incidentsCount
         .map { case (k, v) =>
@@ -499,9 +487,8 @@ class SimpleCasesTest
       firstValidationQuery("events_narrow_test", numbersToRanges(casesPatterns.keys.map(_.toInt).toList.sorted))
     )
     alertByQuery(incidentsTimestamps, secondValidationQuery.format("events_narrow_test"))
-  }
 
-  "Cases 18-42" should "work in ivolga wide table" in {
+  "Cases 18-42" should "work in ivolga wide table" in:
     casesPatternsIvolga.keys.foreach { id =>
       Post(
         submitUrl,
@@ -513,13 +500,11 @@ class SimpleCasesTest
           List(casesPatternsIvolga(id))
         )
       ) ~>
-      route ~> check {
-        withClue(s"Pattern ID: $id") {
+      route ~> check:
+        withClue(s"Pattern ID: $id"):
           status shouldEqual StatusCodes.OK
-        }
-      }
     }
-    Thread.sleep(40000)
+    Thread.sleep(15000)
     alertByQuery(
       incidentsIvolgaCount
         .map { case (k, v) =>
@@ -533,9 +518,8 @@ class SimpleCasesTest
       )
     )
     alertByQuery(incidentsIvolgaTimestamps, secondValidationQuery.format("events_wide_ivolga_test"))
-  }
 
-  "Cases 18-42" should "work in ivolga narrow table" in {
+  "Cases 18-42" should "work in ivolga narrow table" in:
     casesPatternsIvolga.keys.foreach { id =>
       Post(
         submitUrl,
@@ -547,13 +531,11 @@ class SimpleCasesTest
           List(casesPatternsIvolga(id))
         )
       ) ~>
-      route ~> check {
-        withClue(s"Pattern ID: $id") {
+      route ~> check:
+        withClue(s"Pattern ID: $id"):
           status shouldEqual StatusCodes.OK
-        }
-      }
     }
-    Thread.sleep(40000)
+    Thread.sleep(15000)
     alertByQuery(
       incidentsIvolgaCount
         .map { case (k, v) =>
@@ -567,20 +549,17 @@ class SimpleCasesTest
       )
     )
     alertByQuery(incidentsIvolgaTimestamps, secondValidationQuery.format("events_narrow_ivolga_test"))
-  }
 
-  def numbersToRanges(numbers: List[Int]): List[Range] = {
+  def numbersToRanges(numbers: List[Int]): List[Range] =
     @tailrec
-    def inner(in: List[Int], acc: List[Range]): List[Range] = (in, acc) match {
+    def inner(in: List[Int], acc: List[Range]): List[Range] = (in, acc) match
       case (Nil, a)                               => a.reverse
       case (n :: tail, r :: tt) if n == r.end + 1 => inner(tail, (r.start to n) :: tt)
       case (n :: tail, a)                         => inner(tail, (n to n) :: a)
-    }
 
     inner(numbers, Nil)
-  }
 
-  "Cases 1-17, 43-50" should "work in wide Kafka table" in {
+  "Cases 1-17, 43-50" should "work in wide Kafka table" in:
     // use MemoryCheckpointing for Kafka tests
     CheckpointingService.forceCreate(None)
     casesPatterns.keys.foreach { id =>
@@ -594,20 +573,16 @@ class SimpleCasesTest
           List(casesPatterns(id))
         )
       ) ~>
-      route ~> check {
-        withClue(s"Pattern ID: $id") {
+      route ~> check:
+        withClue(s"Pattern ID: $id"):
           status shouldEqual StatusCodes.OK
-        }
         // alertByQuery(List(List(id.toDouble, incidentsCount(id).toDouble)), s"SELECT $id, COUNT(*) FROM events_wide_test WHERE id = $id")
-      }
     }
-    Thread.sleep(40000)
+    Thread.sleep(15000)
     casesPatterns.keys.foreach { id =>
-      Get(s"/job/17kafkawide_$id/stop") ~> route ~> check {
-        withClue(s"Pattern ID: $id") {
+      Get(s"/job/17kafkawide_$id/stop") ~> route ~> check:
+        withClue(s"Pattern ID: $id"):
           status shouldEqual StatusCodes.OK
-        }
-      }
     }
     alertByQuery(
       incidentsCount
@@ -619,9 +594,8 @@ class SimpleCasesTest
       firstValidationQuery("events_wide_kafka_test", numbersToRanges(casesPatterns.keys.map(_.toInt).toList.sorted))
     )
     alertByQuery(incidentsTimestamps, secondValidationQuery.format("events_wide_kafka_test"))
-  }
 
-  "Cases 1-17, 43-50" should "work in wide Kafka sink" in {
+  "Cases 1-17, 43-50" should "work in wide Kafka sink" in:
     casesPatterns.keys.foreach { id =>
       Post(
         submitUrl,
@@ -633,18 +607,15 @@ class SimpleCasesTest
           List(casesPatterns(id))
         )
       ) ~>
-      route ~> check {
-        withClue(s"Pattern ID: $id") {
+      route ~> check:
+        withClue(s"Pattern ID: $id"):
           status shouldEqual StatusCodes.OK
-        }
         // alertByQuery(List(List(id.toDouble, incidentsCount(id).toDouble)), s"SELECT $id, COUNT(*) FROM events_wide_test WHERE id = $id")
-      }
     }
-    Thread.sleep(40000)
+    Thread.sleep(15000)
     // TODO: Verify results
-  }
 
-  "Cases 1-17, 43-50" should "be validated" in {
+  "Cases 1-17, 43-50" should "be validated" in:
     casesPatterns.keys.foreach { id =>
       Post(
         "/patterns/validate/",
@@ -653,16 +624,13 @@ class SimpleCasesTest
           Map()
         )
       ) ~>
-      route ~> check {
-        withClue(s"Pattern ID: $id") {
+      route ~> check:
+        withClue(s"Pattern ID: $id"):
           status shouldEqual StatusCodes.OK
-        }
         // alertByQuery(List(List(id.toDouble, incidentsCount(id).toDouble)), s"SELECT $id, COUNT(*) FROM events_wide_test WHERE id = $id")
-      }
     }
-  }
 
-  "Cases 18-42" should "be validated" in {
+  "Cases 18-42" should "be validated" in:
     casesPatternsIvolga.keys.foreach { id =>
       Post(
         "/patterns/validate/",
@@ -671,16 +639,13 @@ class SimpleCasesTest
           Map()
         )
       ) ~>
-      route ~> check {
-        withClue(s"Pattern ID: $id") {
+      route ~> check:
+        withClue(s"Pattern ID: $id"):
           status shouldEqual StatusCodes.OK
-        }
         // alertByQuery(List(List(id.toDouble, incidentsCount(id).toDouble)), s"SELECT $id, COUNT(*) FROM events_wide_test WHERE id = $id")
-      }
     }
-  }
 
-  "Cases" should "not work in wrong source" in {
+  "Cases" should "not work in wrong source" in:
     Post(
       submitUrl,
       FindPatternsRequest(
@@ -691,11 +656,9 @@ class SimpleCasesTest
         casesPatterns.values.toList
       )
     ) ~>
-    route ~> check {
+    route ~> check:
       status shouldEqual StatusCodes.BadRequest
       entityAs[FailureResponse].errorCode shouldBe 4030
-    }
-  }
 
   // "Cases" should "not work in wrong sink" in {
   //   Post(
@@ -714,7 +677,7 @@ class SimpleCasesTest
   //   }
   // }
 
-  "Wrong patterns" should "not be launched" in {
+  "Wrong patterns" should "not be launched" in:
     val wrongPatterns = Seq(
       RawPattern(id = -1, sourceCode = "POilDieselOut += 9.1"),
       RawPattern(id = -2, sourceCode = "POilDieselOut == 9.22"),
@@ -730,13 +693,8 @@ class SimpleCasesTest
         submitUrl,
         FindPatternsRequest(s"17wrong_${pat.id}", wideInputConf, Seq(wideOutputConf), 50, List(pat))
       ) ~>
-      route ~> check {
-        withClue(s"Pattern ID: ${pat.id}") {
+      route ~> check:
+        withClue(s"Pattern ID: ${pat.id}"):
           // status shouldEqual StatusCodes.BadRequest
           entityAs[FailureResponse].errorCode shouldBe 4020
-        }
-      }
     }
-  }
-
-}

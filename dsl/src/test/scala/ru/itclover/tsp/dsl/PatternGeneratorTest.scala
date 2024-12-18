@@ -10,7 +10,7 @@ import scala.reflect.ClassTag
 
 // This test explicitly uses Any values.
 @SuppressWarnings(Array("org.wartremover.warts.Any"))
-class PatternGeneratorTest extends AnyFlatSpec with Matchers with ScalaCheckPropertyChecks {
+class PatternGeneratorTest extends AnyFlatSpec with Matchers with ScalaCheckPropertyChecks:
   import TestEvents._
 
   val fieldsClasses = Map(
@@ -26,7 +26,7 @@ class PatternGeneratorTest extends AnyFlatSpec with Matchers with ScalaCheckProp
 
   val gen = new ASTPatternGenerator[TestEvent, String, Any]
 
-  "Pattern generator" should "build valid patterns" in {
+  "Pattern generator" should "build valid patterns" in:
 
     val patternsList = List(
       "doubleSensor1 > 0 for 30 sec",
@@ -52,21 +52,17 @@ class PatternGeneratorTest extends AnyFlatSpec with Matchers with ScalaCheckProp
       .foreach(pattern =>
         gen
           .build(pattern, 0.0, 1000L, fieldsClasses)
-          .right
-          .value shouldBe a[(_, PatternMetadata)]
+          .value shouldBe a[(?, PatternMetadata)]
       )
-  }
 
-  "Pattern generator" should "not generate invalid patterns" in {
+  "Pattern generator" should "not generate invalid patterns" in:
     gen.build("1notAValidName > 0 for 30 sec", 0.0, 1000L, fieldsClasses).left.value shouldBe a[Throwable]
-  }
 
-  "Pattern generator" should "not build invalid patterns" in {
+  "Pattern generator" should "not build invalid patterns" in:
     // Assert argument must be boolean
     a[RuntimeException] should be thrownBy gen.generatePattern(Assert(Constant(1.0)))
-  }
 
-  "Casts" should "be performed" in {
+  "Casts" should "be performed" in:
 
     val patternsList = List(
       "doubleSensor1 as int32 > 0",
@@ -78,12 +74,10 @@ class PatternGeneratorTest extends AnyFlatSpec with Matchers with ScalaCheckProp
       .foreach(pattern =>
         gen
           .build(pattern, 0.0, 1000L, fieldsClasses)
-          .right
-          .value shouldBe a[(_, PatternMetadata)]
+          .value shouldBe a[(?, PatternMetadata)]
       )
-  }
 
-  "Syntactic sugar" should "be interpreted" in {
+  "Syntactic sugar" should "be interpreted" in:
     val sugaredPatternsList = List(
       "doubleSensor1 > 0 for 10 seconds fromStart",
       "doubleSensor1 > 0 for 10 seconds > 3 times fromStart",
@@ -107,20 +101,17 @@ class PatternGeneratorTest extends AnyFlatSpec with Matchers with ScalaCheckProp
       .foreach((sp, usp) => {
         val sg = gen
           .build(sp, 0.0, 1000L, fieldsClasses)
-          .right
           .value
         val usg = gen
           .build(usp, 0.0, 1000L, fieldsClasses)
-          .right
           .value
-        sg shouldBe a[(_, PatternMetadata)]
-        usg shouldBe a[(_, PatternMetadata)]
+        sg shouldBe a[(?, PatternMetadata)]
+        usg shouldBe a[(?, PatternMetadata)]
         sg._1.toString shouldBe usg._1.toString
         // sg._2 shouldBe usg._2
       })
-  }
 
-  "Wait/and/or operators" should "work in all orders" in {
+  "Wait/and/or operators" should "work in all orders" in:
 
     val patternsList = List(
       "wait(10 sec, doubleSensor1 > 0 for 10 sec) and doubleSensor2 > 10",
@@ -133,9 +124,5 @@ class PatternGeneratorTest extends AnyFlatSpec with Matchers with ScalaCheckProp
       .foreach(pattern =>
         gen
           .build(pattern, 0.0, 1000L, fieldsClasses)
-          .right
-          .value shouldBe a[(_, PatternMetadata)]
+          .value shouldBe a[(?, PatternMetadata)]
       )
-  }
-
-}

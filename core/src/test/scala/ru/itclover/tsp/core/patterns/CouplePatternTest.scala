@@ -31,15 +31,15 @@ class CouplePatternTest extends AnyWordSpec with Matchers {
 
       // val rnd: Random = new Random()
 
-      val events = (for (
-        time <- Timer(from = Instant.now());
-        idx  <- Increment;
-        row  <- RandomInRange(0, 10)(new Random()).timed(10.seconds)
-      )
+      val events =
+        (for
+          time <- Timer(from = Instant.now());
+          idx  <- Increment;
+          row  <- RandomInRange(0, 10)(new Random()).timed(10.seconds)
         yield Event[Int](time.toEpochMilli, idx.toLong, row.toInt, 0)).run(seconds = 10)
 
-      val out = new ArrayBuffer[IdxValue[_]]()
-      val _ = StateMachine[Id].run(pattern, (1, 1), events, pattern.initialState(), (x: IdxValue[_]) => out += x, 1)
+      val out = new ArrayBuffer[IdxValue[?]]()
+      val _ = StateMachine[Id].run(pattern, (1, 1), events, pattern.initialState(), (x: IdxValue[?]) => out += x, 1)
 
       out.count(_.value.isFail) !== 0
 

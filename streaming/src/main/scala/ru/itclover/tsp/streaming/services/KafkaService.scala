@@ -6,10 +6,10 @@ import ru.itclover.tsp.streaming.io.KafkaInputConf
 
 class StreamEndException(message: String) extends Exception(message)
 
-object KafkaService {
+object KafkaService:
 
   // Stub
-  def fetchFieldsTypesInfo(conf: KafkaInputConf): Try[Seq[(String, Class[_])]] = Try(
+  def fetchFieldsTypesInfo(conf: KafkaInputConf): Try[Seq[(String, Class[?])]] = Try(
     conf.fieldsTypes.map { case (fieldName, fieldType) =>
       val fieldClass = fieldType match {
         case "int8"    => classOf[Byte]
@@ -43,4 +43,3 @@ object KafkaService {
 
     new FlinkKafkaConsumer(conf.topic, deserializer, props)
   }*/
-}

@@ -6,18 +6,16 @@ import ru.itclover.tsp.core.io.TimeExtractor
 import ru.itclover.tsp.core.{Time, Window, _}
 import cats.instances.option._
 import cats.Apply
-import ru.itclover.tsp.core.Time.MaxWindow
 
 import scala.Ordering.Implicits._
 import scala.collection.{mutable => m}
-import com.typesafe.scalalogging.Logger
 
 /* Timer */
 case class TimerPattern[Event: IdxExtractor: TimeExtractor, S, T](
   override val inner: Pattern[Event, S, T],
   override val window: Window,
   val eventsMaxGapMs: Long
-) extends AccumPattern[Event, S, T, Boolean, TimerAccumState[T]] {
+) extends AccumPattern[Event, S, T, Boolean, TimerAccumState[T]]:
 
   override def initialState(): AggregatorPState[S, T, TimerAccumState[T]] = AggregatorPState(
     inner.initialState(),
@@ -26,11 +24,9 @@ case class TimerPattern[Event: IdxExtractor: TimeExtractor, S, T](
     indexTimeMap = m.ArrayDeque.empty
   )
 
-}
-
 case class TimerAccumState[T](
   successStarted: Option[(Idx, Time)]
-) extends AccumState[T, Boolean, TimerAccumState[T]] {
+) extends AccumState[T, Boolean, TimerAccumState[T]]:
 
   // val log = Logger(classOf[TimerAccumState[T]])
 
@@ -39,11 +35,10 @@ case class TimerAccumState[T](
     window: Window,
     times: m.ArrayDeque[(Idx, Time)],
     idxValue: IdxValue[T]
-  ): (TimerAccumState[T], QI[Boolean]) = {
-
+  ): (TimerAccumState[T], QI[Boolean]) =
     // log.debug(s"Current state: $this")
     // log.debug(s"Received event: $idxValue with times: $times")
-    idxValue.value match {
+    idxValue.value match
 
       case Fail =>
         // return fail for the whole event
@@ -60,8 +55,6 @@ case class TimerAccumState[T](
         val newQueue =
           List(waitResult, successResult).filter(_.isDefined).map(_.get).foldLeft(PQueue.empty[Boolean])(_.enqueue(_))
         (TimerAccumState(Some(successStart)), newQueue)
-    }
-  }
 
   private def createIdxValue(
     optStart: Option[(Idx, Time)],
@@ -69,5 +62,3 @@ case class TimerAccumState[T](
     result: Result[Boolean]
   ): Option[IdxValue[Boolean]] =
     Apply[Option].map2(optStart, optEnd)((start, end) => IdxValue(start._1, end._1, result))
-
-}

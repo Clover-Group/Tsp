@@ -9,7 +9,6 @@ import scala.util.Try
 import com.typesafe.scalalogging.Logger
 
 import spray.json._
-import DefaultJsonProtocol._
 
 type PFunction = (Seq[Result[Any]] => Result[Any])
 
@@ -29,12 +28,12 @@ type PReducerTransformation = (Result[Any] => Result[Any])
 class FunctionRegistry(
   @transient val functions: Map[(String, Seq[ASTType]), (PFunction, ASTType)],
   @transient val reducers: Map[(String, ASTType), (PReducer, ASTType, PReducerTransformation, Serializable)]
-) {
+):
 
   def ++(other: FunctionRegistry) = FunctionRegistry(functions ++ other.functions, reducers ++ other.reducers)
 
   def findBestFunctionMatch(name: String, types: Seq[ASTType]): Option[((PFunction, ASTType), Long)] =
-    functions
+    functions.view
       .filterKeys { case (n, t) =>
         n == name && t.length == types.length
       }
@@ -46,13 +45,10 @@ class FunctionRegistry(
       .find(_._2 > 0)
       .map { case ((_, f), c) => (f, c) }
 
-  override def equals(that: Any): Boolean = that match {
+  override def equals(that: Any): Boolean = that match
     case reg: FunctionRegistry => functions == reg.functions && reducers == reg.reducers
-  }
 
-}
-
-object FunctionRegistry {
+object FunctionRegistry:
 
   /** How good types can be cast.
     * @param from
@@ -62,7 +58,7 @@ object FunctionRegistry {
     * @return
     *   Measure of castability (1 = worst possible, 9 = best possible, 10 = same types)
     */
-  def castability(from: ASTType, to: ASTType): Long = (from, to) match {
+  def castability(from: ASTType, to: ASTType): Long = (from, to) match
     case (x, y) if x == y                => 10 // Same types
     case (NullASTType, _)                => 9 // Null can be cast to any type (with highest priority)
     case (IntASTType, DoubleASTType)     => 9 // Int can be safely cast to double
@@ -77,19 +73,16 @@ object FunctionRegistry {
     case (DoubleASTType, BooleanASTType) => 2 // Use very cautiously (value even very close to zero is still TRUE)
     case (_, StringASTType)              => 1 // Any type can be cast to string, but with lowest priority
     case _ => Int.MinValue // no casting otherwise (not Long.MinValue since we use addition)
-  }
-
-}
 
 // Function registry uses Any
 @SuppressWarnings(Array("org.wartremover.warts.Any"))
-object DefaultFunctions extends LazyLogging {
+object DefaultFunctions extends LazyLogging:
   val log = Logger[DefaultFunctions.type]
 
   // Here, asInstanceOf is used in a safe way (and conversion from null).
   @SuppressWarnings(Array("org.wartremover.warts.AsInstanceOf", "org.wartremover.warts.Null"))
   private def toResult[T](x: Any)(implicit ct: ClassTag[T]): Result[T] =
-    x match {
+    x match
       case value: Result[_] => value.asInstanceOf[Result[T]]
       case value: T         => Result.succ(value)
       case null             => logger.warn(s"Null value arrived with type $ct"); Result.fail // fromNull[T]
@@ -117,7 +110,6 @@ object DefaultFunctions extends LazyLogging {
       case _ =>
         logger.warn(s"$x (of type ${x.getClass.getName}) cannot be cast to $ct")
         Result.fail
-    }
 
 //  private def fromNull[T](implicit ct: ClassTag[T]): Result[T] = ct.runtimeClass match {
 //    case x if (x eq classOf[Double]) || (x eq classOf[java.lang.Double]) => Result.succ(Double.NaN.asInstanceOf[T])
@@ -128,7 +120,7 @@ object DefaultFunctions extends LazyLogging {
   def arithmeticFunctions[T1: ClassTag, T2: ClassTag](implicit
     f: Fractional[T1],
     conv: Conversion[T2, T1]
-  ): Map[(String, Seq[ASTType]), (PFunction, ASTType)] = {
+  ): Map[(String, Seq[ASTType]), (PFunction, ASTType)] =
     val astType1: ASTType = ASTType.of[T1]
     val astType2: ASTType = ASTType.of[T2]
     def func(f: (T1, T2) => T1): (PFunction, ASTType) = (
@@ -203,11 +195,10 @@ object DefaultFunctions extends LazyLogging {
         )
       )
     )
-  }
 
   def mathFunctions[T: ClassTag](implicit
     conv: Conversion[T, Double]
-  ): Map[(String, Seq[ASTType]), (PFunction, ASTType)] = {
+  ): Map[(String, Seq[ASTType]), (PFunction, ASTType)] =
     val astType = ASTType.of[T]
     Map(
       ("abs", Seq(astType)) -> (
@@ -301,21 +292,19 @@ object DefaultFunctions extends LazyLogging {
         )
       )
     )
-  }
 
-  def logicalFunctions: Map[(String, Seq[ASTType]), (PFunction, ASTType)] = {
+  def logicalFunctions: Map[(String, Seq[ASTType]), (PFunction, ASTType)] =
     // TSP-182 - Workaround for correct type inference
 
     val btype = BooleanASTType
 
-    def func(sym: String, xs: Seq[Any])(implicit l: Logical[Any]): Result[Boolean] = {
-
+    def func(sym: String, xs: Seq[Any])(implicit l: Logical[Any]): Result[Boolean] =
       // log.info(s"FUNREG: func($sym): Arg0 = ${xs.head}, Arg1 = ${xs(1)}")
       // log.info(s"FUNREG: Args = ${(xs.head, xs.lift(1).getOrElse(()))}")
       // log.info(s"FUNREG: Arg results = ${(toResult[Boolean](xs.head), toResult[Boolean](xs.lift(1).getOrElse(())))}")
-      (toResult[Boolean](xs(0)), toResult[Boolean](xs.lift(1).getOrElse(()))) match {
+      (toResult[Boolean](xs(0)), toResult[Boolean](xs.lift(1).getOrElse(()))) match
         case (Succ(x0), Succ(x1)) =>
-          sym match {
+          sym match
 
             case "and" => Result.succ(l.and(x0, x1))
             case "or"  => Result.succ(l.or(x0, x1))
@@ -323,40 +312,32 @@ object DefaultFunctions extends LazyLogging {
             case "eq"  => Result.succ(l.eq(x0, x1))
             case "neq" => Result.succ(l.neq(x0, x1))
             case _     => Result.fail
-          }
         case (Wait, Fail) | (Fail, Wait) =>
-          sym match {
+          sym match
             case "or" => Result.wait
             case _    => Result.fail
-          }
         case (Succ(x0), Wait) =>
-          sym match {
-            case "and" => if (x0) Result.wait else Result.fail
-            case "or"  => if (x0) Result.succ(x0) else Result.wait
+          sym match
+            case "and" => if x0 then Result.wait else Result.fail
+            case "or"  => if x0 then Result.succ(x0) else Result.wait
             case _     => Result.wait
-          }
         case (Wait, Succ(x1)) =>
-          sym match {
-            case "and" => if (x1) Result.wait else Result.fail
-            case "or"  => if (x1) Result.succ(x1) else Result.wait
+          sym match
+            case "and" => if x1 then Result.wait else Result.fail
+            case "or"  => if x1 then Result.succ(x1) else Result.wait
             case _     => Result.wait
-          }
         case (Wait, Wait) => Result.wait
         case (Succ(x0), Fail) =>
-          sym match {
+          sym match
             case "not" => Result.succ(l.not(x0))
             case "or"  => Result.succ(x0)
             case _     => Result.fail
-          }
         case (Fail, Succ(x1)) =>
-          sym match {
+          sym match
             case "or"  => Result.succ(x1)
             case "not" => Result.succ(true) // negating a fail returns a success
             case _     => Result.fail
-          }
         case _ => Result.fail
-      }
-    }
 
     Map(
       // ('and , Seq(btype, btype))  -> (((xs: Seq[Any]) => xs.foldLeft(true) {_.asInstanceOf[Boolean] && _.asInstanceOf[Boolean]}, btype)),
@@ -368,9 +349,8 @@ object DefaultFunctions extends LazyLogging {
       ("neq", Seq(btype, btype)) -> (((xs: Seq[Any]) => func("neq", xs), btype)),
       ("not", Seq(btype))        -> (((xs: Seq[Any]) => func("not", xs), btype))
     )
-  }
 
-  def stringFunctions: Map[(String, Seq[ASTType]), (PFunction, ASTType)] = {
+  def stringFunctions: Map[(String, Seq[ASTType]), (PFunction, ASTType)] =
     Map(
       ("isnull", Seq(StringASTType)) -> (
         (
@@ -378,6 +358,7 @@ object DefaultFunctions extends LazyLogging {
             toResult[String](xs(0)) match {
               case Succ(t) => Result.succ(t != null)
               case Fail    => Result.fail
+              case Wait    => Result.wait
             },
           StringASTType
         )
@@ -408,7 +389,7 @@ object DefaultFunctions extends LazyLogging {
                 Result.succ(
                   Try {
                     val elems = t0.parseJson.asInstanceOf[JsArray].elements
-                    val index = (if (t1 > 0) t1 - 1 else elems.length + t1).toInt
+                    val index = (if t1 > 0 then t1 - 1 else elems.length + t1).toInt
                     elems(index).convertTo[String](JsonStringReader)
                   }.recoverWith { ex =>
                     log.warn(
@@ -423,12 +404,11 @@ object DefaultFunctions extends LazyLogging {
         )
       )
     )
-  }
 
   def comparingFunctions[T1: ClassTag, T2: ClassTag](implicit
     ord: Ordering[T1],
     conv: Conversion[T2, T1]
-  ): Map[(String, Seq[ASTType]), (PFunction, ASTType)] = {
+  ): Map[(String, Seq[ASTType]), (PFunction, ASTType)] =
     val astType1: ASTType = ASTType.of[T1]
     val astType2: ASTType = ASTType.of[T2]
     Map(
@@ -553,7 +533,6 @@ object DefaultFunctions extends LazyLogging {
         )
       )
     )
-  }
 
   def reducers[T: ClassTag](implicit
     conv: Conversion[T, Double]
@@ -630,7 +609,7 @@ object DefaultFunctions extends LazyLogging {
 
   // Fractional type for Int and Long to allow division
 
-  implicit val fractionalInt: Fractional[Int] = new Fractional[Int] {
+  implicit val fractionalInt: Fractional[Int] = new Fractional[Int]:
     override def div(x: Int, y: Int): Int = x / y
     override def plus(x: Int, y: Int): Int = x + y
     override def minus(x: Int, y: Int): Int = x - y
@@ -644,9 +623,8 @@ object DefaultFunctions extends LazyLogging {
     override def compare(x: Int, y: Int): Int = java.lang.Long.compare(x.toLong, y.toLong)
 
     override def parseString(str: String): Option[Int] = Try(str.toInt).toOption
-  }
 
-  implicit val fractionalLong: Fractional[Long] = new Fractional[Long] {
+  implicit val fractionalLong: Fractional[Long] = new Fractional[Long]:
     override def div(x: Long, y: Long): Long = x / y
     override def plus(x: Long, y: Long): Long = x + y
     override def minus(x: Long, y: Long): Long = x - y
@@ -661,13 +639,9 @@ object DefaultFunctions extends LazyLogging {
 
     override def parseString(str: String): Option[Long] = Try(str.toLong).toOption
 
-  }
-
-}
-
 import ru.itclover.tsp.dsl.DefaultFunctions._
 
-object DefaultFunctionRegistry {
+object DefaultFunctionRegistry:
   given Conversion[Int, Int] = _.toInt
   given Conversion[Int, Long] = _.toLong
   given Conversion[Long, Long] = _.toLong
@@ -706,4 +680,3 @@ object DefaultFunctionRegistry {
   val defaultReducers = reducers[Int] ++ reducers[Long] ++ reducers[Double]
 
   val registry = FunctionRegistry(functions = defaultFunctions, reducers = defaultReducers)
-}

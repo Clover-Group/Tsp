@@ -6,47 +6,44 @@ import ru.itclover.tsp.core.aggregators._
 import ru.itclover.tsp.core.io.TimeExtractor
 
 //todo refactor it later on
-abstract class Patterns[E: IdxExtractor: TimeExtractor] {
+abstract class Patterns[E: IdxExtractor: TimeExtractor]:
 
   type Pat[State, Out] = Pattern[E, State, Out]
 
-  implicit class MapSyntax[S, T](pattern: Pat[S, T]) {
+  implicit class MapSyntax[S, T](pattern: Pat[S, T]):
     def map[A](f: T => A): MapPattern[E, T, A, S] = MapPattern(pattern)(f.andThen(Result.succ))
     def flatMap[A](f: T => Result[A]): MapPattern[E, T, A, S] = MapPattern(pattern)(f)
-  }
 
-  implicit class AndThenSyntax[S, T](pattern: Pat[S, T]) {
+  implicit class AndThenSyntax[S, T](pattern: Pat[S, T]):
 
     def andThen[S2, T2](nextPattern: Pat[S2, T2], secondWindowMs: Window): AndThenPattern[E, T, T2, S, S2] =
       AndThenPattern(pattern, nextPattern, secondWindowMs)
 
-  }
-
-  implicit class OrderingPatternSyntax[S, T: Ordering](pattern: Pat[S, T]) {
+  implicit class OrderingPatternSyntax[S, T: Ordering](pattern: Pat[S, T]):
 
     def lteq[S2](second: Pat[S2, T]): CouplePattern[E, S, S2, T, T, Boolean] =
-      CouplePattern(pattern, second)((t1, t2) => for (x <- t1; y <- t2) yield implicitly[Ordering[T]].lteq(x, y))
+      CouplePattern(pattern, second)((t1, t2) => for x <- t1; y <- t2 yield implicitly[Ordering[T]].lteq(x, y))
 
     def gteq[S2](second: Pat[S2, T]): CouplePattern[E, S, S2, T, T, Boolean] =
-      CouplePattern(pattern, second)((t1, t2) => for (x <- t1; y <- t2) yield implicitly[Ordering[T]].gteq(x, y))
+      CouplePattern(pattern, second)((t1, t2) => for x <- t1; y <- t2 yield implicitly[Ordering[T]].gteq(x, y))
 
     def lt[S2](second: Pat[S2, T]): CouplePattern[E, S, S2, T, T, Boolean] =
-      CouplePattern(pattern, second)((t1, t2) => for (x <- t1; y <- t2) yield implicitly[Ordering[T]].lt(x, y))
+      CouplePattern(pattern, second)((t1, t2) => for x <- t1; y <- t2 yield implicitly[Ordering[T]].lt(x, y))
 
     def gt[S2](second: Pat[S2, T]): CouplePattern[E, S, S2, T, T, Boolean] =
-      CouplePattern(pattern, second)((t1, t2) => for (x <- t1; y <- t2) yield implicitly[Ordering[T]].gt(x, y))
+      CouplePattern(pattern, second)((t1, t2) => for x <- t1; y <- t2 yield implicitly[Ordering[T]].gt(x, y))
 
     def equiv[S2](second: Pat[S2, T]): CouplePattern[E, S, S2, T, T, Boolean] =
-      CouplePattern(pattern, second)((t1, t2) => for (x <- t1; y <- t2) yield implicitly[Ordering[T]].equiv(x, y))
+      CouplePattern(pattern, second)((t1, t2) => for x <- t1; y <- t2 yield implicitly[Ordering[T]].equiv(x, y))
 
     def notEquiv[S2](second: Pat[S2, T]): CouplePattern[E, S, S2, T, T, Boolean] =
-      CouplePattern(pattern, second)((t1, t2) => for (x <- t1; y <- t2) yield !implicitly[Ordering[T]].equiv(x, y))
+      CouplePattern(pattern, second)((t1, t2) => for x <- t1; y <- t2 yield !implicitly[Ordering[T]].equiv(x, y))
 
     def max[S2](second: Pat[S2, T]): CouplePattern[E, S, S2, T, T, T] =
-      CouplePattern(pattern, second)((t1, t2) => for (x <- t1; y <- t2) yield implicitly[Ordering[T]].max(x, y))
+      CouplePattern(pattern, second)((t1, t2) => for x <- t1; y <- t2 yield implicitly[Ordering[T]].max(x, y))
 
     def min[S2](second: Pat[S2, T]): CouplePattern[E, S, S2, T, T, T] =
-      CouplePattern(pattern, second)((t1, t2) => for (x <- t1; y <- t2) yield implicitly[Ordering[T]].min(x, y))
+      CouplePattern(pattern, second)((t1, t2) => for x <- t1; y <- t2 yield implicitly[Ordering[T]].min(x, y))
 
     // aliases
     def >=[S2](second: Pat[S2, T]): CouplePattern[E, S, S2, T, T, Boolean] = gteq(second)
@@ -56,33 +53,27 @@ abstract class Patterns[E: IdxExtractor: TimeExtractor] {
     def ===[S2](second: Pat[S2, T]): CouplePattern[E, S, S2, T, T, Boolean] = equiv(second)
     def =!=[S2](second: Pat[S2, T]): CouplePattern[E, S, S2, T, T, Boolean] = notEquiv(second)
 
-  }
-
-  implicit class GroupPatternSyntax[S, T: Group](pattern: Pat[S, T]) {
+  implicit class GroupPatternSyntax[S, T: Group](pattern: Pat[S, T]):
 
     def plus[S2](second: Pat[S2, T]): CouplePattern[E, S, S2, T, T, T] =
-      CouplePattern(pattern, second)((t1, t2) => for (x <- t1; y <- t2) yield implicitly[Group[T]].combine(x, y))
+      CouplePattern(pattern, second)((t1, t2) => for x <- t1; y <- t2 yield implicitly[Group[T]].combine(x, y))
 
     def minus[S2](second: Pat[S2, T]): CouplePattern[E, S, S2, T, T, T] =
-      CouplePattern(pattern, second)((t1, t2) => for (x <- t1; y <- t2) yield implicitly[Group[T]].remove(x, y))
+      CouplePattern(pattern, second)((t1, t2) => for x <- t1; y <- t2 yield implicitly[Group[T]].remove(x, y))
 
-  }
-
-  implicit class BooleanPatternSyntax[S](pattern: Pat[S, Boolean]) {
+  implicit class BooleanPatternSyntax[S](pattern: Pat[S, Boolean]):
 
     def and[S2](second: Pat[S2, Boolean]): CouplePattern[E, S, S2, Boolean, Boolean, Boolean] =
-      CouplePattern(pattern, second)((t1, t2) => for (x <- t1; y <- t2) yield x & y)
+      CouplePattern(pattern, second)((t1, t2) => for x <- t1; y <- t2 yield x & y)
 
     def or[S2](second: Pat[S2, Boolean]): CouplePattern[E, S, S2, Boolean, Boolean, Boolean] =
-      CouplePattern(pattern, second)((t1, t2) => for (x <- t1; y <- t2) yield x | y)
+      CouplePattern(pattern, second)((t1, t2) => for x <- t1; y <- t2 yield x | y)
 
     def xor[S2](second: Pat[S2, Boolean]): CouplePattern[E, S, S2, Boolean, Boolean, Boolean] =
-      CouplePattern(pattern, second)((t1, t2) => for (x <- t1; y <- t2) yield x ^ y)
-
-  }
+      CouplePattern(pattern, second)((t1, t2) => for x <- t1; y <- t2 yield x ^ y)
 
   def assert[S](inner: Pattern[E, S, Boolean]): MapPattern[E, Boolean, Unit, S] =
-    inner.flatMap(innerBool => if (innerBool) Result.succUnit else Result.fail)
+    inner.flatMap(innerBool => if innerBool then Result.succUnit else Result.fail)
 
   def field[T](f: E => T): SimplePattern[E, T] = SimplePattern(f.andThen(Result.succ))
 
@@ -143,9 +134,6 @@ abstract class Patterns[E: IdxExtractor: TimeExtractor] {
   ): MapPattern[E, GroupAccumResult[T], T, AggregatorPState[S, T, GroupAccumState[T]]] =
     GroupPattern(inner, w).map(x => f.div(x.sum, f.fromInt(x.count.toInt)))
 
-}
-
-object Patterns {
+object Patterns:
 
   def apply[E: IdxExtractor: TimeExtractor]: Patterns[E] = new Patterns[E] {}
-}

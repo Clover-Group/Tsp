@@ -12,7 +12,7 @@ import scala.collection.{mutable => m}
 case class PreviousValue[Event: IdxExtractor: TimeExtractor, State, Out](
   override val inner: Pattern[Event, State, Out],
   override val window: Window
-) extends AccumPattern[Event, State, Out, Out, PreviousValueAccumState[Out]] {
+) extends AccumPattern[Event, State, Out, Out, PreviousValueAccumState[Out]]:
 
   override def initialState() =
     AggregatorPState(
@@ -22,23 +22,20 @@ case class PreviousValue[Event: IdxExtractor: TimeExtractor, State, Out](
       m.Queue.empty
     )
 
-}
-
 // todo simplify
-case class PreviousValueAccumState[T](queue: QI[(Time, T)]) extends AccumState[T, T, PreviousValueAccumState[T]] {
+case class PreviousValueAccumState[T](queue: QI[(Time, T)]) extends AccumState[T, T, PreviousValueAccumState[T]]:
 
   override def updated(
     window: Window,
     times: m.ArrayDeque[(Idx, Time)],
     idxValue: IdxValue[T]
-  ): (PreviousValueAccumState[T], QI[T]) = {
+  ): (PreviousValueAccumState[T], QI[T]) =
     val (newQueue, newOutputQueue) =
       times.foldLeft(queue -> PQueue.empty[T]) { case ((q, output), (idx, time)) =>
         addOnePoint(time, idx, window, idxValue.value, q, output)
       }
 
     PreviousValueAccumState(newQueue) -> newOutputQueue
-  }
 
   private def addOnePoint(
     time: Time,
@@ -47,21 +44,17 @@ case class PreviousValueAccumState[T](queue: QI[(Time, T)]) extends AccumState[T
     value: Result[T],
     queue: QI[(Time, T)],
     output: QI[T]
-  ): (QI[(Time, T)], QI[T]) = {
+  ): (QI[(Time, T)], QI[T]) =
     // Timestamp and value which was actual to the (time - window) moment
-    def splitAtActualTs(): (Option[T], QI[(Time, T)]) = {
+    def splitAtActualTs(): (Option[T], QI[(Time, T)]) =
       @tailrec
-      def inner(q: QI[(Time, T)], v: Option[T]): (Option[T], QI[(Time, T)]) = {
-
-        q.headOption match {
+      def inner(q: QI[(Time, T)], v: Option[T]): (Option[T], QI[(Time, T)]) =
+        q.headOption match
           case Some(IdxValue(_, _, Succ((t, result)))) if t.plus(window) <= time => inner(q.behead(), Some(result))
           case Some(IdxValue(_, _, Fail))                                        => inner(q.behead(), v)
           case _                                                                 => (v, q)
-        }
-      }
 
       inner(queue, None)
-    }
 
     val (newValue, newQueue) = splitAtActualTs()
     val newIdxValue = IdxValue(idx, idx, value.map(time -> _))
@@ -71,6 +64,3 @@ case class PreviousValueAccumState[T](queue: QI[(Time, T)]) extends AccumState[T
 
     updatedQueue ->
     head.map(x => IdxValue(idx, idx, Succ(x))).foldLeft(output) { case (q, x) => q.enqueue(x) }
-  }
-
-}

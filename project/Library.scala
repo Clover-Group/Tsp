@@ -16,9 +16,9 @@ object Version {
   val akkaHttp = "10.5.3"
   val sprayJson = "1.3.6"
 
-  val cats = "3.5.5"
+  val cats = "3.5.7"
   val fs2 = "3.11.0"
-  val fs2Kafka = "3.5.1"
+  val fs2Kafka = "3.6.0"
   val doobie = "1.0.0-RC6"
 
   val scalaTest = "3.2.19"
@@ -26,7 +26,7 @@ object Version {
   val jmh = "0.3.7"
 
   val testContainers = "0.41.4"
-  val testContainersKafka = "1.20.3"
+  val testContainersKafka = "1.20.4"
   val testContainersRedis = "2.2.2"
   val postgres = "42.7.4"
 
@@ -36,7 +36,7 @@ object Version {
 
   val shapeless = "2.3.3"
 
-  val jackson = "2.18.1"
+  val jackson = "2.18.2"
   val jaxb = "4.0.5"
   val activation = "1.2.0"
 
@@ -57,7 +57,7 @@ object Version {
 
   val strawmanVersion = "0.9.0"
 
-  val redissonVersion = "3.38.1"
+  val redissonVersion = "3.40.2"
   val kryoVersion = "5.6.2"
 
   val akkaHttpMetrics = "1.7.1"

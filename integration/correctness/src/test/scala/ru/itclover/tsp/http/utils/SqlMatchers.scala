@@ -12,7 +12,7 @@ import com.dimafeng.testcontainers.ClickHouseContainer
 @SuppressWarnings(
   Array("org.wartremover.warts.NonUnitStatements", "org.wartremover.warts.AsInstanceOf", "org.wartremover.warts.Any")
 )
-trait SqlMatchers extends Matchers {
+trait SqlMatchers extends Matchers:
 
   val logger = Logger("SqlMatchers")
 
@@ -21,7 +21,7 @@ trait SqlMatchers extends Matchers {
   @SuppressWarnings(Array("org.wartremover.warts.DefaultArguments"))
   def checkByQuery(expectedValues: Seq[Seq[Double]], query: String, epsilon: Double = 0.0001)(implicit
     container: ClickHouseContainer
-  ): Assertion = {
+  ): Assertion =
     val con = container.container.createConnection("")
     val resultSet = con.prepareStatement(query).executeQuery()
     val columnCount = resultSet.getMetaData.getColumnCount
@@ -44,12 +44,9 @@ trait SqlMatchers extends Matchers {
     val unexpected = results.filter(x => !expectedValues.exists(y => customEqualityList.areEqual(x.toList, y)))
     withClue(
       s"Expected but not found: [${toStringRepresentation(unfound)}]; found [${toStringRepresentation(unexpected)}] instead"
-    ) {
+    ):
       // results should ===(expectedValues)
       unfound shouldBe empty
       unexpected shouldBe empty
-    }
-  }
 
   def toStringRepresentation(data: Seq[Seq[Double]]): String = data.map(_.mkString(", ")).mkString(";\n")
-}

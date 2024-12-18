@@ -5,30 +5,24 @@ import ru.itclover.tsp.streaming.utils.CollectionOps.TryOps
 import java.io.{File, FileWriter}
 import scala.util.Try
 
-object Files {
+object Files:
 
-  def writeToFile(path: String, content: String, overwrite: Boolean = false): Try[Unit] = {
+  def writeToFile(path: String, content: String, overwrite: Boolean = false): Try[Unit] =
     val pw = new FileWriter(new File(path), !overwrite)
     Try {
       pw.write(content)
-    }.eventually {
+    }.eventually:
       pw.close()
-    }
-  }
 
-  def readResource(resourcePath: String): Iterator[String] = {
+  def readResource(resourcePath: String): Iterator[String] =
     val stream = getClass.getResourceAsStream(resourcePath)
     scala.io.Source.fromInputStream(stream).getLines
-  }
 
-  def readFile(path: String): Try[String] = for {
+  def readFile(path: String): Try[String] = for
     src <- Try(scala.io.Source.fromFile(path))
-    str <- Try(src.mkString).eventually {
+    str <- Try(src.mkString).eventually:
       src.close
-    }
-  } yield str
+  yield str
 
   def rmFile(path: String): Boolean =
     new File(path).delete()
-
-}

@@ -2,7 +2,7 @@ package ru.itclover.tsp.dsl
 
 import spray.json.*
 
-object JsonStringReader extends JsonReader[String] {
+object JsonStringReader extends JsonReader[String]:
 
   override def read(json: JsValue): String = json match
     case JsArray(elements) => s"[${elements.map(read).mkString(",")}]"
@@ -12,5 +12,3 @@ object JsonStringReader extends JsonReader[String] {
     case JsString(value)   => value
     case JsFalse           => "false"
     case JsTrue            => "true"
-
-}

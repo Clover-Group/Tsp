@@ -13,11 +13,11 @@ case object StringASTType extends ASTType
 case object NullASTType extends ASTType
 case object AnyASTType extends ASTType
 
-object ASTType {
+object ASTType:
 
   val log = Logger("ASTType")
 
-  def of[T](implicit ct: ClassTag[T]): ASTType = ct.runtimeClass match {
+  def of[T](implicit ct: ClassTag[T]): ASTType = ct.runtimeClass match
     // Basic check, if T isn't lost
     case c if c.isAssignableFrom(classOf[Int])               => IntASTType
     case c if c.isAssignableFrom(classOf[Short])             => IntASTType
@@ -51,9 +51,6 @@ object ASTType {
       log.warn(s"${ct.runtimeClass.getName()} is not a known class, defaulting to AnyASTType")
       AnyASTType
     }
-  }
 
-  private def isNamesMatch(tag: Class[_], classes: Seq[Class[_]]) =
+  private def isNamesMatch(tag: Class[?], classes: Seq[Class[?]]) =
     classes.map(_.getName).contains(tag.getName)
-
-}

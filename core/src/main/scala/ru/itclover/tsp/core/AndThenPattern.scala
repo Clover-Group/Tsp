@@ -17,13 +17,13 @@ case class AndThenPattern[Event: IdxExtractor: TimeExtractor, T1, T2, S1, S2](
   first: Pattern[Event, S1, T1],
   second: Pattern[Event, S2, T2],
   secondWindowMs: Window
-) extends Pattern[Event, AndThenPState[T1, T2, S1, S2], Boolean] {
+) extends Pattern[Event, AndThenPState[T1, T2, S1, S2], Boolean]:
 
   def apply[F[_]: Monad, Cont[_]: Foldable: Functor](
     oldState: AndThenPState[T1, T2, S1, S2],
     oldQueue: PQueue[Boolean],
     event: Cont[Event]
-  ): F[(AndThenPState[T1, T2, S1, S2], PQueue[Boolean])] = {
+  ): F[(AndThenPState[T1, T2, S1, S2], PQueue[Boolean])] =
 
     val firstF = first.apply[F, Cont](oldState.firstState, oldState.firstQueue, event)
     val secondF = second.apply[F, Cont](oldState.secondState, oldState.secondQueue, event)
@@ -34,26 +34,23 @@ case class AndThenPattern[Event: IdxExtractor: TimeExtractor, T1, T2, S1, S2](
       .foldLeft(mutable.ListBuffer.empty[(Idx, Time)])((queue, e) => queue.addOne(idxExtractor(e), timeExtractor(e)))
       .toList
 
-    for (
+    for
       newFirstOutput  <- firstF;
       newSecondOutput <- secondF
-    )
-      yield {
-        // process queues
-        val doubleQueue = uniteQueues(newFirstOutput._2, newSecondOutput._2)
-        val finalQueue =
-          process(doubleQueue, oldQueue, oldState.secondSuccStart, oldState.lastSuccess, times, secondWindowMs)
+    yield
+      // process queues
+      val doubleQueue = uniteQueues(newFirstOutput._2, newSecondOutput._2)
+      val finalQueue =
+        process(doubleQueue, oldQueue, oldState.secondSuccStart, oldState.lastSuccess, times, secondWindowMs)
 
-        AndThenPState(
-          newFirstOutput._1,
-          newFirstOutput._2,
-          newSecondOutput._1,
-          newSecondOutput._2,
-          finalQueue._1.toSeq.lastOption.map(!_.value.isFail).getOrElse(false),
-          finalQueue._2
-        ) -> finalQueue._1
-      }
-  }
+      AndThenPState(
+        newFirstOutput._1,
+        newFirstOutput._2,
+        newSecondOutput._1,
+        newSecondOutput._2,
+        finalQueue._1.toSeq.lastOption.map(!_.value.isFail).getOrElse(false),
+        finalQueue._2
+      ) -> finalQueue._1
 
   override def initialState(): AndThenPState[T1, T2, S1, S2] =
     AndThenPState(first.initialState(), PQueue.empty, second.initialState(), PQueue.empty, false, None)
@@ -65,14 +62,14 @@ case class AndThenPattern[Event: IdxExtractor: TimeExtractor, T1, T2, S1, S2](
     lastSuccess: Boolean,
     times: List[(Idx, Time)],
     secondWindowMs: Window
-  ): (QI[Boolean], Option[Idx]) = {
+  ): (QI[Boolean], Option[Idx]) =
     // @tailrec
     def inner(
       inputQ: DoubleQueue[T1, T2],
       outputQ: QI[Boolean],
       secondSuccStart: Option[Idx],
       lastSuccess: Boolean
-    ): (QI[Boolean], Option[Idx], Boolean) = {
+    ): (QI[Boolean], Option[Idx], Boolean) =
       // println(s"AT: head = ${inputQ.headOptzion}")
       val res: (QI[Boolean], Option[Idx], Boolean) = inputQ.headOption match
         case Some(start, end, (value1, value2)) =>
@@ -94,7 +91,7 @@ case class AndThenPattern[Event: IdxExtractor: TimeExtractor, T1, T2, S1, S2](
             case (Fail, Succ(_)) =>
               inner(
                 inputQ.tail,
-                outputQ.enqueue(IdxValue(start, end, if (lastSuccess) Result.succ(true) else Result.fail)),
+                outputQ.enqueue(IdxValue(start, end, if lastSuccess then Result.succ(true) else Result.fail)),
                 newSecondSuccStart,
                 lastSuccess
               )
@@ -109,16 +106,15 @@ case class AndThenPattern[Event: IdxExtractor: TimeExtractor, T1, T2, S1, S2](
               )
             case (Wait, Succ(_)) =>
               val events =
-                if (outputSuccStart.map(_ <= start).getOrElse(false))
-                  List(IdxValue(start, end, if (lastSuccess) Result.succ(true) else Result.wait))
-                else if (outputSuccStart.map(_ > end).getOrElse(true)) List(IdxValue(start, end, Result.wait))
-                else {
+                if outputSuccStart.map(_ <= start).getOrElse(false) then
+                  List(IdxValue(start, end, if lastSuccess then Result.succ(true) else Result.wait))
+                else if outputSuccStart.map(_ > end).getOrElse(true) then List(IdxValue(start, end, Result.wait))
+                else
                   val splitIdx = outputSuccStart.get
                   List(
                     IdxValue(start, splitIdx - 1, Result.wait),
-                    IdxValue(splitIdx, end, if (lastSuccess) Result.succ(true) else Result.wait)
+                    IdxValue(splitIdx, end, if lastSuccess then Result.succ(true) else Result.wait)
                   )
-                }
               inner(
                 inputQ.tail,
                 outputQ.enqueue(events*),
@@ -136,57 +132,48 @@ case class AndThenPattern[Event: IdxExtractor: TimeExtractor, T1, T2, S1, S2](
               )
             case (Succ(_), Succ(_)) =>
               val events =
-                if (outputSuccStart.map(_ <= start).getOrElse(false)) List(IdxValue(start, end, Result.succ(true)))
-                else if (outputSuccStart.map(_ > end).getOrElse(true)) List(IdxValue(start, end, Result.wait))
-                else {
+                if outputSuccStart.map(_ <= start).getOrElse(false) then List(IdxValue(start, end, Result.succ(true)))
+                else if outputSuccStart.map(_ > end).getOrElse(true) then List(IdxValue(start, end, Result.wait))
+                else
                   val splitIdx = outputSuccStart.get
                   List(
                     IdxValue(start, splitIdx - 1, Result.wait),
                     IdxValue(splitIdx, end, Result.succ(true))
                   )
-                }
               inner(inputQ.tail, outputQ.enqueue(events*), newSecondSuccStart, true)
         case None => (outputQ, secondSuccStart, false)
       // println(s"res = $res")
       res
-    }
 
-    var res = inner(unitedQueue, totalQ, secondSuccStart, lastSuccess)
+    val res = inner(unitedQueue, totalQ, secondSuccStart, lastSuccess)
     (res._1, res._2)
-  }
 
   type DoubleQueue[T1, T2] = mutable.ArrayDeque[(Idx, Idx, (Result[T1], Result[T2]))]
 
-  private def uniteQueues(firstQ: QI[T1], secondQ: QI[T2]): DoubleQueue[T1, T2] = {
+  private def uniteQueues(firstQ: QI[T1], secondQ: QI[T2]): DoubleQueue[T1, T2] =
     @tailrec
     def inner(firstQ: QI[T1], secondQ: QI[T2], outputQ: DoubleQueue[T1, T2]): DoubleQueue[T1, T2] =
-      (firstQ.headOption, secondQ.headOption) match {
+      (firstQ.headOption, secondQ.headOption) match
         case (Some(IdxValue(start1, end1, value1)), Some(IdxValue(start2, end2, value2))) =>
-          if (start1 < start2) {
+          if start1 < start2 then
             inner(firstQ.rewindTo(start2), secondQ, outputQ.addOne((start1, start2 - 1, (value1, Result.fail))))
-          } else if (start1 > start2) {
+          else if start1 > start2 then
             inner(firstQ, secondQ.rewindTo(start1), outputQ.addOne((start2, start1 - 1, (Result.fail, value2))))
-          } else if (end1 < end2) {
+          else if end1 < end2 then
             inner(firstQ.dequeue()._2, secondQ.rewindTo(end1 + 1), outputQ.addOne((start1, end1, (value1, value2))))
-          } else if (end1 > end2) {
+          else if end1 > end2 then
             inner(firstQ.rewindTo(end2 + 1), secondQ.dequeue()._2, outputQ.addOne((start2, end2, (value1, value2))))
-          } else {
-            inner(firstQ.dequeue()._2, secondQ.dequeue()._2, outputQ.addOne(start1, end1, (value1, value2)))
-          }
+          else inner(firstQ.dequeue()._2, secondQ.dequeue()._2, outputQ.addOne(start1, end1, (value1, value2)))
         case (Some(IdxValue(start1, end1, value1)), None) =>
           inner(firstQ.dequeue()._2, secondQ, outputQ.addOne((start1, end1, (value1, Result.fail))))
         case (None, Some(IdxValue(start2, end2, value2))) =>
           inner(firstQ, secondQ.dequeue()._2, outputQ.addOne((start2, end2, (Result.fail, value2))))
         case _ => outputQ
-      }
     val outputQ: DoubleQueue[T1, T2] = mutable.ArrayDeque.empty
     // println(s"QUEUE MERGER: 1st = $firstQ, 2nd = $secondQ")
     inner(firstQ, secondQ, outputQ)
     // println(s"QUEUE MERGER RESULT: $outputQ")
     // outputQ
-  }
-
-}
 
 case class AndThenPState[T1, T2, State1, State2](
   firstState: State1,

@@ -7,7 +7,6 @@ import com.typesafe.scalalogging.Logger
 import ru.itclover.tsp.BuildInfo
 import ru.itclover.tsp.streaming.checkpointing.CheckpointingService
 import spray.json._
-import spray.json.DefaultJsonProtocol._
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
@@ -20,7 +19,7 @@ case class CoordinatorService(
   coordUri: String,
   advHost: Option[String],
   advPort: Option[Int]
-)(implicit as: ActorSystem, execCtx: ExecutionContext) {
+)(implicit as: ActorSystem, execCtx: ExecutionContext):
 
   case class RegisterMessage(
     version: String,
@@ -42,12 +41,11 @@ case class CoordinatorService(
     rowsWritten: Long
   )
 
-  object MessageJsonProtocol extends DefaultJsonProtocol {
+  object MessageJsonProtocol extends DefaultJsonProtocol:
     implicit val registerMessageFormat: RootJsonFormat[RegisterMessage] = jsonFormat4(RegisterMessage.apply)
     implicit val unregisterMessageFormat: RootJsonFormat[UnregisterMessage] = jsonFormat1(UnregisterMessage.apply)
     implicit val jobStartedMessageFormat: RootJsonFormat[JobStartedMessage] = jsonFormat1(JobStartedMessage.apply)
     implicit val jobCompletedMessageFormat: RootJsonFormat[JobCompletedMessage] = jsonFormat6(JobCompletedMessage.apply)
-  }
 
   import MessageJsonProtocol._
 
@@ -57,13 +55,12 @@ case class CoordinatorService(
 
   val uuid = java.util.UUID.randomUUID.toString
 
-  val task: Runnable = new Runnable {
+  val task: Runnable = new Runnable:
     def run(): Unit = notifyRegister()
-  }
 
-  val f: ScheduledFuture[_] = ex.scheduleAtFixedRate(task, 30, 60, TimeUnit.SECONDS)
+  val f: ScheduledFuture[?] = ex.scheduleAtFixedRate(task, 30, 60, TimeUnit.SECONDS)
 
-  def notifyRegister(): Unit = {
+  def notifyRegister(): Unit =
 
     val uri = s"$coordUri/api/tspinteraction/register"
     log.info(s"Notifying coordinator at $uri...")
@@ -85,15 +82,14 @@ case class CoordinatorService(
     )
 
     responseFuture
-      .onComplete {
+      .onComplete:
         case Success(res) => {
-          if (res.status.isFailure) log.error(s"Error: TSP coordinator returned ${res.status}: ${res.entity.toString}")
+          if res.status.isFailure then
+            log.error(s"Error: TSP coordinator returned ${res.status}: ${res.entity.toString}")
         }
         case Failure(ex) => log.error(s"Cannot connect to $uri: $ex")
-      }
-  }
 
-  def notifyJobStarted(jobId: String): Unit = {
+  def notifyJobStarted(jobId: String): Unit =
     val uri = s"$coordUri/api/tspinteraction/jobstarted"
     log.warn(s"Job $jobId started: notifying coordinator to $uri...")
 
@@ -106,15 +102,14 @@ case class CoordinatorService(
     )
 
     responseFuture
-      .onComplete {
+      .onComplete:
         case Success(res) => {
-          if (res.status.isFailure) log.error(s"Error: TSP coordinator returned ${res.status}: ${res.entity.toString}")
+          if res.status.isFailure then
+            log.error(s"Error: TSP coordinator returned ${res.status}: ${res.entity.toString}")
         }
         case Failure(ex) => log.error(s"Cannot connect to $uri: $ex")
-      }
-  }
 
-  def notifyJobCompleted(jobId: String, exception: Option[Throwable]): Unit = {
+  def notifyJobCompleted(jobId: String, exception: Option[Throwable]): Unit =
 
     val uri = s"$coordUri/api/tspinteraction/jobcompleted"
     log.warn(s"Job $jobId completed: notifying coordinator to $uri...")
@@ -138,15 +133,14 @@ case class CoordinatorService(
     )
 
     responseFuture
-      .onComplete {
+      .onComplete:
         case Success(res) => {
-          if (res.status.isFailure) log.error(s"Error: TSP coordinator returned ${res.status}: ${res.entity.toString}")
+          if res.status.isFailure then
+            log.error(s"Error: TSP coordinator returned ${res.status}: ${res.entity.toString}")
         }
         case Failure(ex) => log.error(s"Cannot connect to $uri: $ex")
-      }
-  }
 
-  def notifyUnregister(): Unit = {
+  def notifyUnregister(): Unit =
     val uri = s"$coordUri/api/tspinteraction/unregister"
     log.info(s"Notifying coordinator at $uri...")
 
@@ -164,43 +158,37 @@ case class CoordinatorService(
     )
 
     responseFuture
-      .onComplete {
+      .onComplete:
         case Success(res) => {
-          if (res.status.isFailure) log.error(s"Error: TSP coordinator returned ${res.status}: ${res.entity.toString}")
+          if res.status.isFailure then
+            log.error(s"Error: TSP coordinator returned ${res.status}: ${res.entity.toString}")
         }
-        case Failure(ex) => log.error(s"Cannot connect to $uri: $ex")
-      }
-  }
+        case Failure(ex) => log.error(s"Cannot connect to $uri: ${ex.toString()}")
 
-  def errorIsFatal(error: Throwable): Boolean = {
+  def errorIsFatal(error: Throwable): Boolean =
     // TODO: which exceptions are fatal
-    error match {
+    error match
       case se: java.net.SocketException => false
       case se: java.sql.SQLException    => false // TODO: message?
       case re: StreamRunException =>
         !(re.error.isInstanceOf[SourceUnavailable] || re.error.isInstanceOf[SinkUnavailable])
       case cf: fs2.CompositeFailure => cf.all.map(errorIsFatal(_)).foldLeft(false)(_ || _)
       case _                        => false
-    }
-  }
 
-}
-
-object CoordinatorService {
+object CoordinatorService:
   private var service: Option[CoordinatorService] = None
 
   def getOrCreate(coordUri: String, advHost: Option[String], advPort: Option[Int])(implicit
     as: ActorSystem,
     execCtx: ExecutionContext
   ): CoordinatorService =
-    service match {
+    service match
       case Some(value) =>
         value
       case None =>
         val srv = CoordinatorService(coordUri, advHost, advPort)
         service = Some(srv)
         srv
-    }
 
   def getTspId: String = service.map(_.uuid).getOrElse("")
 
@@ -211,5 +199,3 @@ object CoordinatorService {
 
   def notifyJobCompleted(jobId: String, exception: Option[Throwable]): Unit =
     service.map(_.notifyJobCompleted(jobId, exception)).getOrElse(())
-
-}

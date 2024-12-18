@@ -25,7 +25,7 @@ abstract class AccumPattern[Event: IdxExtractor: TimeExtractor, InnerState, Inne
   InnerOut,
   Out,
   AState
-]] extends AggregatorPatterns[Event, AggregatorPState[InnerState, InnerOut, AState], Out] {
+]] extends AggregatorPatterns[Event, AggregatorPState[InnerState, InnerOut, AState], Out]:
 
   val window: Window
 
@@ -35,14 +35,14 @@ abstract class AccumPattern[Event: IdxExtractor: TimeExtractor, InnerState, Inne
     state: AggregatorPState[InnerState, InnerOut, AState],
     queue: PQueue[Out],
     event: Cont[Event]
-  ): F[(AggregatorPState[InnerState, InnerOut, AState], PQueue[Out])] = {
+  ): F[(AggregatorPState[InnerState, InnerOut, AState], PQueue[Out])] =
 
     val idxTimeMapWithNewEvents =
       event.foldLeft(state.indexTimeMap) { case (a, b) => a.append(b.index -> b.time); a }
 
     inner
       .apply[F, Cont](state.innerState, state.innerQueue, event)
-      .map {
+      .map:
         case (newInnerState, newInnerQueue) => {
           val (updatedInnerQueue, newAState, newResults, updatedIndexTimeMap) =
             processQueue(newInnerQueue, state.astate, queue, idxTimeMapWithNewEvents)
@@ -54,8 +54,6 @@ abstract class AccumPattern[Event: IdxExtractor: TimeExtractor, InnerState, Inne
             updatedIndexTimeMap
           ) -> newResults
         }
-      }
-  }
 
   @tailrec
   private def processQueue(
@@ -63,8 +61,8 @@ abstract class AccumPattern[Event: IdxExtractor: TimeExtractor, InnerState, Inne
     accumState: AState,
     results: QI[Out],
     indexTimeMap: m.ArrayDeque[(Idx, Time)]
-  ): (QI[InnerOut], AState, QI[Out], m.ArrayDeque[(Idx, Time)]) = {
-    innerQueue.dequeueOption() match {
+  ): (QI[InnerOut], AState, QI[Out], m.ArrayDeque[(Idx, Time)]) =
+    innerQueue.dequeueOption() match
       case None                                               => (innerQueue, accumState, results, indexTimeMap)
       case Some((iv @ IdxValue(start, end, _), updatedQueue)) =>
         // rewind all old records
@@ -76,12 +74,8 @@ abstract class AccumPattern[Event: IdxExtractor: TimeExtractor, InnerState, Inne
         val (newAState, newResults) = accumState.updated(window, idxTimeMapForValue, iv)
 
         processQueue(updatedQueue, newAState, PQueue.spillQueueToAnother(newResults, results), updatedIdxTimeMap)
-    }
-  }
 
-}
-
-trait AccumState[In, Out, Self <: AccumState[In, Out, Self]] extends Product with Serializable {
+trait AccumState[In, Out, Self <: AccumState[In, Out, Self]] extends Product with Serializable:
 
   /** This method is called for each IdxValue produced by inner patterns.
     * @param window
@@ -95,4 +89,3 @@ trait AccumState[In, Out, Self <: AccumState[In, Out, Self]] extends Product wit
     *   Tuple of updated state and queue of results to be emitted from this pattern.
     */
   def updated(window: Window, times: m.ArrayDeque[(Idx, Time)], idxValue: IdxValue[In]): (Self, QI[Out])
-}

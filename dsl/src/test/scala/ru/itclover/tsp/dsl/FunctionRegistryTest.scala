@@ -7,11 +7,11 @@ import org.scalatest.flatspec._
 import ru.itclover.tsp.core.Result
 import org.scalatest.matchers.should.Matchers
 
-class FunctionRegistryTest extends AnyFlatSpec with Matchers with ScalaCheckPropertyChecks {
+class FunctionRegistryTest extends AnyFlatSpec with Matchers with ScalaCheckPropertyChecks:
   val funReg: FunctionRegistry = DefaultFunctionRegistry.registry
   implicit val doubleEq: Equality[Double] = TolerantNumerics.tolerantDoubleEquality(1e-6)
 
-  "Function registry boolean functions" should "be callable" in {
+  "Function registry boolean functions" should "be callable" in:
 
     val input = List(
       ("and", Seq(true, false)),
@@ -21,15 +21,14 @@ class FunctionRegistryTest extends AnyFlatSpec with Matchers with ScalaCheckProp
 
     val output = List(false, true, false)
 
-    (input, output).zipped.map { (in, out) =>
+    input.lazyZip(output).map { (in, out) =>
       funReg.functions((in._1, Seq(BooleanASTType, BooleanASTType)))._1(in._2.map(Result.succ(_))) shouldBe Result.succ(
         out
       )
     }
     funReg.functions(("not", Seq(BooleanASTType)))._1(Seq(Result.succ(true))) shouldBe Result.succ(false)
-  }
 
-  "Function registry arithmetic functions with double" should "be callable" in {
+  "Function registry arithmetic functions with double" should "be callable" in:
 
     val input = List(
       ("add", Seq(5.0, 8.0)),
@@ -40,14 +39,13 @@ class FunctionRegistryTest extends AnyFlatSpec with Matchers with ScalaCheckProp
 
     val output = List(13.0, 13.0, 13.0, 13.0)
 
-    (input, output).zipped.map { (in, out) =>
+    input.lazyZip(output).map { (in, out) =>
       funReg.functions((in._1, Seq(DoubleASTType, DoubleASTType)))._1(in._2.map(Result.succ(_))) shouldBe Result.succ(
         out
       )
     }
-  }
 
-  "Function registry arithmetic functions with long" should "be callable" in {
+  "Function registry arithmetic functions with long" should "be callable" in:
 
     val input = List(
       ("add", Seq(5L, 8L)),
@@ -58,13 +56,11 @@ class FunctionRegistryTest extends AnyFlatSpec with Matchers with ScalaCheckProp
 
     val output = List(13L, 13L, 13L, 13L)
 
-    (input, output).zipped.map { (in, out) =>
+    input.lazyZip(output).map { (in, out) =>
       funReg.functions((in._1, Seq(LongASTType, LongASTType)))._1(in._2.map(Result.succ(_))) shouldBe Result.succ(out)
     }
 
-  }
-
-  "Function registry arithmetic functions with int" should "be callable" in {
+  "Function registry arithmetic functions with int" should "be callable" in:
 
     val input = List(
       ("add", Seq(5, 8)),
@@ -75,12 +71,11 @@ class FunctionRegistryTest extends AnyFlatSpec with Matchers with ScalaCheckProp
 
     val output = List(13, 13, 13, 13)
 
-    (input, output).zipped.map { (in, out) =>
+    input.lazyZip(output).map { (in, out) =>
       funReg.functions((in._1, Seq(IntASTType, IntASTType)))._1(in._2.map(Result.succ(_))) shouldBe Result.succ(out)
     }
-  }
 
-  "Function registry arithmetic functions with mixed types" should "be callable" in {
+  "Function registry arithmetic functions with mixed types" should "be callable" in:
 
     val input = List(
       ("add", Seq[Any](5.0, 8)),
@@ -91,12 +86,11 @@ class FunctionRegistryTest extends AnyFlatSpec with Matchers with ScalaCheckProp
 
     val output = List(13.0, 13.0, 13.0, 13.0)
 
-    (input, output).zipped.map { (in, out) =>
+    input.lazyZip(output).map { (in, out) =>
       funReg.functions((in._1, Seq(DoubleASTType, IntASTType)))._1(in._2.map(Result.succ(_))) shouldBe Result.succ(out)
     }
-  }
 
-  "Math functions" should "be callable" in {
+  "Math functions" should "be callable" in:
 
     val input = List(
       ("abs", Seq(-1.0), -1),
@@ -118,7 +112,7 @@ class FunctionRegistryTest extends AnyFlatSpec with Matchers with ScalaCheckProp
       1.0, 1.0, 0.0, 1.0, 1.0, 1.0, 1.0, 0.5, 0.5, 1.0, 0.0, 1.0, 0.0
     )
 
-    (input, output).zipped.map { (in, out) =>
+    input.lazyZip(output).map { (in, out) =>
       // We need `.asInstanceOf[Double]` here to enable tolerant comparison
       funReg
         .functions((in._1, Seq(DoubleASTType)))
@@ -126,9 +120,8 @@ class FunctionRegistryTest extends AnyFlatSpec with Matchers with ScalaCheckProp
         .getOrElse(in._3)
         .asInstanceOf[Double] should ===(out)
     }
-  }
 
-  "Function registry comparison functions with double" should "be callable" in {
+  "Function registry comparison functions with double" should "be callable" in:
 
     val input = List(
       ("lt", Seq(5.0, 8.0)),
@@ -141,14 +134,13 @@ class FunctionRegistryTest extends AnyFlatSpec with Matchers with ScalaCheckProp
 
     val output = List(true, false, true, false, true, true)
 
-    (input, output).zipped.map { (in, out) =>
+    input.lazyZip(output).map { (in, out) =>
       funReg.functions((in._1, Seq(DoubleASTType, DoubleASTType)))._1(in._2.map(Result.succ(_))) shouldBe Result.succ(
         out
       )
     }
-  }
 
-  "Function registry comparison functions with mixed types" should "be callable" in {
+  "Function registry comparison functions with mixed types" should "be callable" in:
 
     val input = List(
       ("lt", Seq[Any](5.0, 8)),
@@ -161,12 +153,11 @@ class FunctionRegistryTest extends AnyFlatSpec with Matchers with ScalaCheckProp
 
     val output = List(true, false, true, false, true, true)
 
-    (input, output).zipped.map { (in, out) =>
+    input.lazyZip(output).map { (in, out) =>
       funReg.functions((in._1, Seq(DoubleASTType, IntASTType)))._1(in._2.map(Result.succ(_))) shouldBe Result.succ(out)
     }
-  }
 
-  "Function registry comparison functions with string" should "be callable" in {
+  "Function registry comparison functions with string" should "be callable" in:
 
     val input = List(
       ("lt", Seq("abc", "abd")),
@@ -179,14 +170,13 @@ class FunctionRegistryTest extends AnyFlatSpec with Matchers with ScalaCheckProp
 
     val output = List(true, false, true, false, true, true)
 
-    (input, output).zipped.map { (in, out) =>
+    input.lazyZip(output).map { (in, out) =>
       funReg.functions((in._1, Seq(StringASTType, StringASTType)))._1(in._2.map(Result.succ(_))) shouldBe Result.succ(
         out
       )
     }
-  }
 
-  "String-string functions" should "be callable" in {
+  "String-string functions" should "be callable" in:
 
     val input = List(
       ("jsonobjectvalue", Seq("""{"1": 100, "2": 200}""", "2")),
@@ -197,14 +187,13 @@ class FunctionRegistryTest extends AnyFlatSpec with Matchers with ScalaCheckProp
 
     val output = List("200", "300", "", "")
 
-    (input, output).zipped.map { (in, out) =>
+    input.lazyZip(output).map { (in, out) =>
       funReg.functions((in._1, Seq(StringASTType, StringASTType)))._1(in._2.map(Result.succ(_))) shouldBe Result.succ(
         out
       )
     }
-  }
 
-  "String-int functions" should "be callable" in {
+  "String-int functions" should "be callable" in:
 
     val input = List(
       ("jsonarrayvalue", Seq("[1, 2, 3, 4, 5]", 2)),
@@ -217,22 +206,17 @@ class FunctionRegistryTest extends AnyFlatSpec with Matchers with ScalaCheckProp
 
     val output = List("2", "4", "3", "", "", "")
 
-    (input, output).zipped.map { (in, out) =>
+    input.lazyZip(output).map { (in, out) =>
       funReg.functions((in._1, Seq(StringASTType, IntASTType)))._1(in._2.map(Result.succ(_))) shouldBe Result.succ(
         out
       )
     }
-  }
 
-  "Function registry concatenation" should "work" in {
+  "Function registry concatenation" should "work" in:
     // currently no other registries exist
     funReg ++ funReg shouldBe funReg
-  }
 
-  "Function registry reducers" should "be callable" in {
+  "Function registry reducers" should "be callable" in:
     funReg.reducers(("sumof", DoubleASTType))._1(Result.succ(5.0), Result.succ(8.0)) shouldBe Result.succ(13.0)
     funReg.reducers(("minof", DoubleASTType))._1(Result.succ(5.0), Result.succ(8.0)) shouldBe Result.succ(5.0)
     funReg.reducers(("maxof", DoubleASTType))._1(Result.succ(5.0), Result.succ(8.0)) shouldBe Result.succ(8.0)
-  }
-
-}

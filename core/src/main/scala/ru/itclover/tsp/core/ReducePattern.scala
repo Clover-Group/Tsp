@@ -19,30 +19,28 @@ class ReducePattern[Event, S, T1, T2](
   val transform: Result[T2] => Result[T2],
   val filterCond: Result[T1] => Boolean,
   val initial: Result[T2]
-) extends Pattern[Event, ReducePState[S, T1], T2] {
+) extends Pattern[Event, ReducePState[S, T1], T2]:
 
   override def apply[F[_]: Monad, Cont[_]: Foldable: Functor](
     oldState: ReducePState[S, T1],
     oldQueue: PQueue[T2],
     events: Cont[Event]
-  ): F[(ReducePState[S, T1], PQueue[T2])] = {
+  ): F[(ReducePState[S, T1], PQueue[T2])] =
     val patternsF: List[F[(S, PQueue[T1])]] =
       patterns.zip(oldState.stateAndQueues).map { case (p, (s, q)) => p.apply[F, Cont](s, q, events) }.toList
     val patternsG: F[List[(S, PQueue[T1])]] = patternsF.traverse(identity)
-    for (pG <- patternsG) yield {
+    for pG <- patternsG yield
       val (updatedQueues, newFinalQueue) = processQueues(pG.map(_._2), oldQueue)
       ReducePState(pG.zip(updatedQueues).map { case ((p, _), q) => p -> q }) -> newFinalQueue
-    }
-  }
 
-  private def processQueues(qs: Seq[QI[T1]], resultQ: QI[T2]): (Seq[QI[T1]], QI[T2]) = {
+  private def processQueues(qs: Seq[QI[T1]], resultQ: QI[T2]): (Seq[QI[T1]], QI[T2]) =
 
     @tailrec
-    def inner(queues: Seq[QI[T1]], result: QI[T2]): (Seq[QI[T1]], QI[T2]) = {
+    def inner(queues: Seq[QI[T1]], result: QI[T2]): (Seq[QI[T1]], QI[T2]) =
 
       def default: (Seq[QI[T1]], QI[T2]) = (queues, result)
 
-      queues.map(_.headOption) match {
+      queues.map(_.headOption) match
         // if any of parts is empty -> do nothing
         case x if x.contains(None) => default
         case x =>
@@ -56,24 +54,17 @@ class ReducePattern[Event, S, T1, T2](
           val commonEnd = ends.min
           val newQueue = queues.map(_.rewindTo(commonEnd + 1))
           val newResult =
-            if (commonEnd >= commonStart) {
+            if commonEnd >= commonStart then
               val res: Result[T2] = transform(values.filter(filterCond).foldLeft(initial)(func))
               result.enqueue(IdxValue(commonStart, commonEnd, res))
-            } else {
-              result
-            }
+            else result
 
           inner(newQueue, newResult)
-      }
-    }
 
     inner(qs, resultQ)
-  }
 
   override def initialState(): ReducePState[S, T1] = ReducePState(
     patterns.map(p => p.initialState() -> PQueue.empty[T1])
   )
-
-}
 
 case class ReducePState[State, T1](stateAndQueues: Seq[(State, PQueue[T1])])

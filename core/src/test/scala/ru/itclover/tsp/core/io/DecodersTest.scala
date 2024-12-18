@@ -63,7 +63,7 @@ class DecodersTest extends AnyWordSpec with Matchers {
       val testString = "test"
       val thrownException = the[RuntimeException] thrownBy intDecoder.apply(testString)
 
-      assert(thrownException.getMessage contains s"Cannot parse String ($testString) to Int")
+      assert(thrownException.getMessage `contains` s"Cannot parse String ($testString) to Int")
 
     }
 
@@ -84,7 +84,7 @@ class DecodersTest extends AnyWordSpec with Matchers {
       val testString = "test"
       val thrownException = the[RuntimeException] thrownBy longDecoder.apply(testString)
 
-      assert(thrownException.getMessage contains s"Cannot parse String ($testString) to Long")
+      assert(thrownException.getMessage `contains` s"Cannot parse String ($testString) to Long")
 
     }
 
@@ -111,7 +111,7 @@ class DecodersTest extends AnyWordSpec with Matchers {
       val testString = "test"
       val thrownException = the[RuntimeException] thrownBy booleanDecoder.apply(testString)
 
-      assert(thrownException.getMessage contains s"Cannot parse '$testString' to Boolean")
+      assert(thrownException.getMessage `contains` s"Cannot parse '$testString' to Boolean")
 
     }
 

@@ -4,7 +4,7 @@ import ru.itclover.tsp.core.Pattern.Idx
 import scala.annotation.tailrec
 import scala.collection.mutable
 
-trait PQueue[T] {
+trait PQueue[T]:
 
   def size: Int
   @inline def headOption: Option[IdxValue[T]]
@@ -20,63 +20,53 @@ trait PQueue[T] {
   def toSeq: Seq[IdxValue[T]]
 
   override def toString(): String = s"PQueue[${toSeq}]"
-}
 
-object PQueue {
+object PQueue:
 
   def apply[T](idxValue: IdxValue[T]): PQueue[T] = MutablePQueue(idxValue)
 
   def empty[T]: PQueue[T] = MutablePQueue(new mutable.ArrayDeque[IdxValue[T]]())
 
   @tailrec
-  def spillQueueToAnother[A](source: PQueue[A], dest: PQueue[A]): PQueue[A] = {
-    source.dequeueOption() match {
+  def spillQueueToAnother[A](source: PQueue[A], dest: PQueue[A]): PQueue[A] =
+    source.dequeueOption() match
       case Some((head, tail)) => spillQueueToAnother(tail, dest.enqueue(head))
       case None               => dest
-    }
-  }
 
   // Removes elements from PQueue until predicate is true
   @scala.annotation.tailrec
-  def unwindWhile[T](queue: PQueue[T])(func: IdxValue[T] => Boolean): PQueue[T] = {
-    queue.headOption match {
+  def unwindWhile[T](queue: PQueue[T])(func: IdxValue[T] => Boolean): PQueue[T] =
+    queue.headOption match
       case Some(x) if func(x) => unwindWhile(queue.behead())(func)
       case _                  => queue
-    }
-  }
 
   // PQueue with mutable queue backend. This is the default implementation used in the majority of patterns
-  case class MutablePQueue[T](queue: mutable.ArrayDeque[IdxValue[T]]) extends PQueue[T] {
+  case class MutablePQueue[T](queue: mutable.ArrayDeque[IdxValue[T]]) extends PQueue[T]:
 
     override def headOption: Option[IdxValue[T]] = queue.headOption
 
-    override def dequeue(): (IdxValue[T], PQueue[T]) = {
+    override def dequeue(): (IdxValue[T], PQueue[T]) =
       val result = queue.removeHead(true)
       result -> this
-    }
 
-    override def dequeueOption(): Option[(IdxValue[T], PQueue[T])] = {
-      if (!queue.isEmpty) {
-        Some(queue.removeHead(true) -> this)
-      } else None
-    }
+    override def dequeueOption(): Option[(IdxValue[T], PQueue[T])] =
+      if !queue.isEmpty then Some(queue.removeHead(true) -> this)
+      else None
 
-    override def behead(): MutablePQueue[T] = {
+    override def behead(): MutablePQueue[T] =
       val _ = queue.removeHead(true)
       this
-    }
 
-    override def beheadOption(): Option[PQueue[T]] = if (!queue.isEmpty) {
+    override def beheadOption(): Option[PQueue[T]] = if !queue.isEmpty then
       val _ = queue.removeHead(true)
       Some(this)
-    } else None
+    else None
 
     override def clean(): PQueue[T] = MutablePQueue(new mutable.ArrayDeque[IdxValue[T]]())
 
-    override def enqueue(idxValues: IdxValue[T]*): PQueue[T] = {
+    override def enqueue(idxValues: IdxValue[T]*): PQueue[T] =
       idxValues.foreach(enqueueWithUniting)
       this
-    }
 
     override def enqueueOption(idxValues: Option[IdxValue[T]]*): PQueue[T] = enqueue(
       idxValues.filter(_.isDefined).map(_.get)*
@@ -85,11 +75,11 @@ object PQueue {
     override def toSeq: Seq[IdxValue[T]] = queue.toSeq
     override def size: Int = queue.size
 
-    override def rewindTo(newStart: Idx): PQueue[T] = {
+    override def rewindTo(newStart: Idx): PQueue[T] =
 
       @tailrec
-      def inner(q: PQueue[T]): PQueue[T] = {
-        headOption match {
+      def inner(q: PQueue[T]): PQueue[T] =
+        headOption match
           case None                                            => q
           case Some(IdxValue(start, _, _)) if start > newStart => q
           case Some(IdxValue(_, end, _)) if end < newStart     => inner(q.behead())
@@ -98,14 +88,11 @@ object PQueue {
             val _ = queue.prepend(first.copy(start = newStart))
             this
           }
-        }
-      }
 
       inner(this)
-    }
 
-    private def enqueueWithUniting(idxValue: IdxValue[T]): Unit = {
-      queue.lastOption match {
+    private def enqueueWithUniting(idxValue: IdxValue[T]): Unit =
+      queue.lastOption match
         case None =>
           val _ = queue.append(idxValue)
         case Some(IdxValue(start, end, value)) if value == idxValue.value || value.isWait =>
@@ -113,12 +100,8 @@ object PQueue {
           val _ = queue.append(IdxValue(Math.min(start, idxValue.start), Math.max(end, idxValue.end), idxValue.value))
         case _ =>
           val _ = queue.append(idxValue)
-      }
-    }
 
-  }
-
-  object MutablePQueue {
+  object MutablePQueue:
 
     def apply[T](): MutablePQueue[T] = new MutablePQueue(new mutable.ArrayDeque[IdxValue[T]]())
 
@@ -128,17 +111,14 @@ object PQueue {
       queue
     })
 
-  }
-
   // Lazy variant of PQueue with func
-  case class MapPQueue[A, T](queue: PQueue[A], @transient func: IdxValue[A] => Result[T]) extends PQueue[T] {
+  case class MapPQueue[A, T](queue: PQueue[A], @transient func: IdxValue[A] => Result[T]) extends PQueue[T]:
     override def size: Int = queue.size
     override def headOption: Option[IdxValue[T]] = queue.headOption.map(x => x.map(_ => func(x)))
 
-    override def dequeue(): (IdxValue[T], PQueue[T]) = {
+    override def dequeue(): (IdxValue[T], PQueue[T]) =
       val (idx, pqueue) = queue.dequeue()
       (idx.map(_ => func(idx)), MapPQueue(pqueue, func))
-    }
 
     override def dequeueOption(): Option[(IdxValue[T], PQueue[T])] =
       queue.dequeueOption().map { case (idx, pqueue) => (idx.map(_ => func(idx)), MapPQueue(pqueue, func)) }
@@ -161,6 +141,3 @@ object PQueue {
     override def toSeq: Seq[IdxValue[T]] = queue.toSeq.view.map(x => x.map(_ => func(x))).toSeq
 
     override def rewindTo(newStart: Idx): PQueue[T] = this.copy(queue = queue.rewindTo(newStart))
-  }
-
-}

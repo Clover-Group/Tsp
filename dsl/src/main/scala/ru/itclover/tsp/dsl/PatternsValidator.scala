@@ -4,7 +4,7 @@ import ru.itclover.tsp.core.RawPattern
 
 import scala.reflect.ClassTag
 
-object PatternsValidator {
+object PatternsValidator:
 
   def validate[Event](
     patterns: Seq[RawPattern],
@@ -19,7 +19,7 @@ object PatternsValidator {
 
   // This method may use Any values.
   @SuppressWarnings(Array("org.wartremover.warts.Any"))
-  def toClassTags(fields: Map[String, String]): Map[String, ClassTag[_]] = fields.map { case (name, dataType) =>
+  def toClassTags(fields: Map[String, String]): Map[String, ClassTag[?]] = fields.map { case (name, dataType) =>
     name -> (dataType match {
       case "float64" => ClassTag.Double
       case "float32" => ClassTag.Float
@@ -32,5 +32,3 @@ object PatternsValidator {
       case _         => ClassTag.Any
     })
   }.toMap
-
-}

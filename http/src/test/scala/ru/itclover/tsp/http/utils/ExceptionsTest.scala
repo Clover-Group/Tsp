@@ -6,9 +6,9 @@ import org.scalatest.matchers.should._
 
 /** Class for testing the exceptions viewer in "core" module
   */
-class ExceptionsTest extends AnyFlatSpec with Matchers {
+class ExceptionsTest extends AnyFlatSpec with Matchers:
 
-  it should "get string with stacktrace" in {
+  it should "get string with stacktrace" in:
 
     val one = 1
     val zero = 0
@@ -18,7 +18,3 @@ class ExceptionsTest extends AnyFlatSpec with Matchers {
     val actualString = Exceptions.getStackTrace(thrownException).substring(0, 40)
 
     actualString shouldBe expectedString
-
-  }
-
-}

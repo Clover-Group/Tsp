@@ -12,7 +12,7 @@ import scala.reflect.ClassTag
 
 // This test uses Any values.
 @SuppressWarnings(Array("org.wartremover.warts.Any"))
-class FootprintBench extends AnyFlatSpec with Matchers {
+class FootprintBench extends AnyFlatSpec with Matchers:
 
   import TestEvents._
 
@@ -24,7 +24,7 @@ class FootprintBench extends AnyFlatSpec with Matchers {
     "doubleSensor2" -> ClassTag.Double
   )
 
-  def process[T, S](pattern: Pattern[TestEvent, S, T], events: Seq[TestEvent]): Long = {
+  def process[T, S](pattern: Pattern[TestEvent, S, T], events: Seq[TestEvent]): Long =
     val start = System.nanoTime()
     val sm = StateMachine[Id]
     val initialState = pattern.initialState()
@@ -34,15 +34,13 @@ class FootprintBench extends AnyFlatSpec with Matchers {
     val time = (System.nanoTime() - start) / 1000000
     println(time)
     time
-  }
 
-  def repeat[T, S](times: Int, amount: Int, pattern: Pattern[TestEvent, S, T]): Long = {
-    val events = (1 to amount).map(l => TestEvent(l.toLong * 1000, 1, 1, boolSensor = true, 1.0, 2.0)).seq
+  def repeat[T, S](times: Int, amount: Int, pattern: Pattern[TestEvent, S, T]): Long =
+    val events = (1 to amount).map(l => TestEvent(l.toLong * 1000, 1, 1, boolSensor = true, 1.0, 2.0))
     val ts = (1 to times).map(_ => { val t = process(pattern, events); t }).sum
     ts / times
-  }
 
-  it should "benchmark" in {
+  it should "benchmark" in:
     given Conversion[String, String] = _.toString
 
     val gen = new ASTPatternGenerator[TestEvent, String, Any]
@@ -54,14 +52,9 @@ class FootprintBench extends AnyFlatSpec with Matchers {
         1000L,
         fieldsClasses
       )
-      .right
       .map(_._1)
       .getOrElse(???)
 
 //    val optimizedPattern = new Optimizer[TestEvent].optimize(patternString)
     val actualTime = repeat(5, 1000, patternString)
     println(actualTime)
-
-  }
-
-}

@@ -4,7 +4,7 @@ import cats.{Monad, Traverse}
 import cats.syntax.flatMap._
 import com.typesafe.scalalogging.Logger
 
-class StateMachine[F[_]: Monad: Traverse] {
+class StateMachine[F[_]: Monad: Traverse]:
   private val log = Logger[StateMachine[F]]
 
   /** Runs stateMachine for given `pattern` and `events`. Use `seedState` as an initial State. Calls `consume` for every
@@ -38,7 +38,7 @@ class StateMachine[F[_]: Monad: Traverse] {
     consume: IdxValue[Out] => F[Unit] = (_: IdxValue[Out]) => Monad[F].pure(()),
     groupSize: Int = 100000,
     writeTimeLogs: Boolean = false
-  ): F[State] = {
+  ): F[State] =
 
     var counter = 0
     import cats.instances.list._
@@ -52,7 +52,7 @@ class StateMachine[F[_]: Monad: Traverse] {
 
         state
           .flatMap(s => pattern.apply[F, List](s, PQueue.empty, evs.toList))
-          .flatMap {
+          .flatMap:
             case (newState, newQueue) => {
 
               val allConsumed: F[Unit] = newQueue.toSeq.foldLeft(Monad[F].pure(())) { case (t, out) =>
@@ -61,19 +61,13 @@ class StateMachine[F[_]: Monad: Traverse] {
 
               Monad[F].map(allConsumed)(_ => newState)
             }
-          }
       }
     val end = System.nanoTime()
 
-    if (writeTimeLogs) {
+    if writeTimeLogs then
       log.debug(s"Pattern $patternIdAndSubunit: processed $counter rows for ${(end - start) / 1e6} milliseconds")
-    }
     finalState
-  }
 
-}
-
-object StateMachine {
+object StateMachine:
 
   def apply[F[_]: Monad: Traverse] = new StateMachine[F]
-}

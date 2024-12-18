@@ -29,7 +29,7 @@ class SparseRowsDataAccumulator[InEvent, InKey, Value, OutEvent](
   eventCreator: EventCreator[OutEvent, InKey],
   eventPrinter: EventPrinter[OutEvent],
   keyCreator: KeyCreator[InKey]
-) {
+):
   val event: mutable.Map[InKey, (Value, Time)] = mutable.Map.empty
   val targetKeySet: Set[InKey] = fieldsKeysTimeoutsMs.keySet
   val keysIndexesMap: Map[InKey, Int] = targetKeySet.zip(0 until targetKeySet.size).toMap
@@ -45,7 +45,7 @@ class SparseRowsDataAccumulator[InEvent, InKey, Value, OutEvent](
   val arity: Int = fieldsKeysTimeoutsMs.size + extraFieldNames.size
 
   var lastTimestamp = Time(Long.MinValue)
-  var lastEvent: OutEvent = _
+  var lastEvent: OutEvent = scala.compiletime.uninitialized
   val counter: AtomicLong = AtomicLong(1)
   // TODO: Timer
 
@@ -53,11 +53,11 @@ class SparseRowsDataAccumulator[InEvent, InKey, Value, OutEvent](
 
   log.debug(s"Created accumulator with fields map: ${allFieldsIndexesMap}")
 
-  def map(item: InEvent): Seq[OutEvent] = {
+  def map(item: InEvent): Seq[OutEvent] =
     val time = extractTime(item)
     val delta = time.toMillis - lastTimestamp.toMillis
-    var generatedEvents = mutable.ListBuffer[OutEvent]()
-    if (regularityInterval.isDefined && lastEvent != null && 0 < delta && delta < eventsMaxGapMs) {
+    val generatedEvents = mutable.ListBuffer[OutEvent]()
+    if regularityInterval.isDefined && lastEvent != null && 0 < delta && delta < eventsMaxGapMs then
       // need to output multiple lines
       val linesCount = delta / regularityInterval.get
       val times = (1L to linesCount).map(i => lastTimestamp.toMillis + i * regularityInterval.get)
@@ -66,78 +66,66 @@ class SparseRowsDataAccumulator[InEvent, InKey, Value, OutEvent](
         val list = mutable.ListBuffer.tabulate[(InKey, AnyRef)](arity)(x => (keyCreator.create(s"empty_$x"), null))
         list(allFieldsIndexesMap(timeColumn)) = (
           timeColumn,
-          new java.lang.Double(t.toDouble / 1000.0)
+          java.lang.Double.valueOf(t.toDouble / 1000.0)
         )
         partitionsColumns.foreach { key =>
           list(allFieldsIndexesMap(key)) = (key, partitionsColumnsValues(key).asInstanceOf[AnyRef])
         }
         dropExpiredKeys(event, Time(t))
-        val indexesMap = if (defaultTimeout.isDefined) allFieldsIndexesMap else keysIndexesMap
-        event.foreach {
+        val indexesMap = if defaultTimeout.isDefined then allFieldsIndexesMap else keysIndexesMap
+        event.foreach:
           case (k, (v, _)) if indexesMap.contains(k) && k != timeColumn && !partitionsColumns.contains(k) =>
             list(indexesMap(k)) = (k, v.asInstanceOf[AnyRef])
           case _ => // do nothing
-        }
         val e = eventCreator.create(list.toSeq, counter.get())
         counter.incrementAndGet()
         generatedEvents += e
       }
       log.info(s"Generated ${generatedEvents.length} events: $generatedEvents")
-    }
-    if (useUnfolding) {
+    if useUnfolding then
       val (key, value) = extractKeyAndVal(item)
-      if (event.get(key).orNull == null || value != null) event(key) = (value, time)
-    } else {
+      if event.get(key).orNull == null || value != null then event(key) = (value, time)
+    else
       allFieldsIndexesMap.keySet.foreach { key =>
         val newValue = Try(extractValue(item, key))
-        newValue match {
+        newValue match
           case Success(nv) if nv != null || !event.contains(key) => event(key) = (nv.asInstanceOf[Value], time)
           case _                                                 => // do nothing
-        }
       }
-    }
     dropExpiredKeys(event, time)
     val list = mutable.ListBuffer.tabulate[(InKey, AnyRef)](arity)(x => (keyCreator.create(s"empty_$x"), null))
-    val indexesMap = if (defaultTimeout.isDefined) allFieldsIndexesMap else keysIndexesMap
-    event.foreach {
+    val indexesMap = if defaultTimeout.isDefined then allFieldsIndexesMap else keysIndexesMap
+    event.foreach:
       case (k, (v, _)) if indexesMap.contains(k) => list(indexesMap(k)) = (k, v.asInstanceOf[AnyRef])
       case _                                     =>
-    }
     extraFieldNames.foreach { name =>
       val value = extractValue(item, name)
-      if (value != null) list(extraFieldsIndexesMap(name)) = (name, value.asInstanceOf[AnyRef])
+      if value != null then list(extraFieldsIndexesMap(name)) = (name, value.asInstanceOf[AnyRef])
     }
     val outEvent = eventCreator.create(list.toSeq, counter.get())
-    val returnEvent = if (delta > 0 && lastEvent != null) {
+    val returnEvent = if delta > 0 && lastEvent != null then
       log.debug(s"Returning event: ${eventPrinter.prettyPrint(lastEvent)}")
       counter.incrementAndGet()
       generatedEvents.prepend(lastEvent)
       generatedEvents.toSeq
-    } else {
-      Seq.empty
-    }
+    else Seq.empty
     lastTimestamp = time
     lastEvent = outEvent
-    if (startTimestamp.map(_.toMillis <= time.toMillis).getOrElse(true)) returnEvent else Seq.empty
-  }
+    if startTimestamp.map(_.toMillis <= time.toMillis).getOrElse(true) then returnEvent else Seq.empty
 
   def getLastEvent: OutEvent = lastEvent
 
-  lazy val fieldNames: List[InKey] = {
-    val indexesMap = if (defaultTimeout.isDefined) allFieldsIndexesMap else keysIndexesMap
+  lazy val fieldNames: List[InKey] =
+    val indexesMap = if defaultTimeout.isDefined then allFieldsIndexesMap else keysIndexesMap
     val byIndex = indexesMap.map(_.swap)
     (0 to arity - 1).map(byIndex.getOrElse(_, keyCreator.create("undefined"))).toList
-  }
 
-  private def dropExpiredKeys(event: mutable.Map[InKey, (Value, Time)], currentRowTime: Time): Unit = {
-    event.retain((k, v) =>
+  private def dropExpiredKeys(event: mutable.Map[InKey, (Value, Time)], currentRowTime: Time): Unit =
+    event.filterInPlace((k, v) =>
       currentRowTime.toMillis - v._2.toMillis < fieldsKeysTimeoutsMs.getOrElse(k, defaultTimeout.getOrElse(0L))
     )
-  }
 
-}
-
-object SparseRowsDataAccumulator {
+object SparseRowsDataAccumulator:
 
   def apply[InEvent, InKey, Value, OutEvent](
     streamSource: StreamSource[InEvent, InKey, Value],
@@ -149,7 +137,7 @@ object SparseRowsDataAccumulator {
     eventCreator: EventCreator[OutEvent, InKey],
     eventPrinter: EventPrinter[OutEvent],
     keyCreator: KeyCreator[InKey]
-  ): SparseRowsDataAccumulator[InEvent, InKey, Value, OutEvent] = {
+  ): SparseRowsDataAccumulator[InEvent, InKey, Value, OutEvent] =
     streamSource.conf.dataTransformation
       .map({
         case ndu: NarrowDataUnfolding[InEvent, InKey, _] =>
@@ -223,6 +211,3 @@ object SparseRowsDataAccumulator {
           )
       })
       .getOrElse(sys.error("No data transformation config specified"))
-  }
-
-}

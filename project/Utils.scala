@@ -11,28 +11,29 @@ import sbtrelease._
 
 object Utils {
 
-  def setVersion(selectVersion: Versions => String): ReleaseStep = { st: State =>
-    val vs = st
-      .get(ReleaseKeys.versions)
-      .getOrElse(sys.error("No versions are set! Was this release part executed before inquireVersions?"))
-    val selected = selectVersion(vs)
+  def setVersion(selectVersion: Versions => String): ReleaseStep = {
+    st: State =>
+      val vs = st
+        .get(ReleaseKeys.versions)
+        .getOrElse(sys.error("No versions are set! Was this release part executed before inquireVersions?"))
+      val selected = selectVersion(vs)
 
-    st.log.info("Setting version to '%s'.".format(selected))
-    val useGlobal = Project.extract(st).get(releaseUseGlobalVersion)
-    val versionStr = "%s".format(selected)
-    val file = Project.extract(st).get(releaseVersionFile)
-    IO.writeLines(file, Seq(versionStr))
+      st.log.info("Setting version to '%s'.".format(selected))
+      val useGlobal = Project.extract(st).get(releaseUseGlobalVersion)
+      val versionStr = "%s".format(selected)
+      val file = Project.extract(st).get(releaseVersionFile)
+      IO.writeLines(file, Seq(versionStr))
 
-    // Write release notes from temporary WIP changelog to regular one
-    // writeWipToChangelog(versionStr)
+      // Write release notes from temporary WIP changelog to regular one
+      // writeWipToChangelog(versionStr)
 
-    reapply(
-      Seq(
-        if (useGlobal) version in ThisBuild := selected
-        else version := selected
-      ),
-      st
-    )
+      reapply(
+        Seq(
+          if (useGlobal) ThisBuild / version := selected
+          else version := selected
+        ),
+        st
+      )
   }
 
   // val changelogFileName: TagName = "./CHANGELOG"
@@ -58,17 +59,18 @@ object Utils {
       .get(releaseVcs)
       .getOrElse(sys.error("Aborting release. Working directory is not a repository of a recognized VCS."))
 
-  def commitChangelogs: ReleaseStep = { st: State =>
-    // if (vcs(st).add(changelogFileName, changelogWipFileName).! > 0) {
-    //   sys.error("Aborting release due to adding changelogs failed.")
-    // }
-    // val sign = Project.extract(st).get(releaseVcsSign)
-    // val signOff = Project.extract(st).get(releaseVcsSignOff)
-    // val ver = Project.extract(st).get(version)
-    // if (vcs(st).commit(s"updated CHANGELOGS for $ver", sign, signOff).! > 0) {
-    //   sys.error("Aborting release due to committing changelogs failed.")
-    // }
-    st
+  def commitChangelogs: ReleaseStep = {
+    st: State =>
+      // if (vcs(st).add(changelogFileName, changelogWipFileName).! > 0) {
+      //   sys.error("Aborting release due to adding changelogs failed.")
+      // }
+      // val sign = Project.extract(st).get(releaseVcsSign)
+      // val signOff = Project.extract(st).get(releaseVcsSignOff)
+      // val ver = Project.extract(st).get(version)
+      // if (vcs(st).commit(s"updated CHANGELOGS for $ver", sign, signOff).! > 0) {
+      //   sys.error("Aborting release due to committing changelogs failed.")
+      // }
+      st
   }
 
   // def defaultGithubRelease: Def.Initialize[InputTask[GHRelease]] = Def.inputTaskDyn {

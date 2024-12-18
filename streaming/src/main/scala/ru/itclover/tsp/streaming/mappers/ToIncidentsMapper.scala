@@ -14,9 +14,9 @@ final case class ToIncidentsMapper[E, EKey, EItem](
   sessionWindowMs: Long,
   partitionFields: Seq[EKey],
   additionalFields: Seq[EKey]
-)(implicit extractor: Extractor[E, EKey, EItem], decoder: Decoder[EItem, Any]) {
+)(implicit extractor: Extractor[E, EKey, EItem], decoder: Decoder[EItem, Any]):
 
-  def apply(event: E): Segment => Incident = {
+  def apply(event: E): Segment => Incident =
     val partitionFieldsValues: Seq[(EKey, Any)] =
       partitionFields.map(f => f -> extractor[Any](event, f))
     val additionalFieldsValues: Seq[(EKey, Any)] =
@@ -36,6 +36,3 @@ final case class ToIncidentsMapper[E, EKey, EItem](
         partitionFieldsValues.map { case (k, v) => (k.toString, v.toString) }.toMap,
         additionalFieldsValues.map { case (k, v) => (k.toString, v.toString) }.toMap
       )
-  }
-
-}

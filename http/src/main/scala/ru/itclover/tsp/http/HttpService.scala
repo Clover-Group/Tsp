@@ -1,7 +1,6 @@
 package ru.itclover.tsp.http
 
 import akka.actor.ActorSystem
-import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import akka.http.scaladsl.model.StatusCodes._
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server._
@@ -20,10 +19,11 @@ import ru.itclover.tsp.http.utils.Exceptions.InvalidRequest
 
 import scala.concurrent.ExecutionContextExecutor
 import scala.util.Properties
+import com.github.housepower.exception.ClickHouseException as NewClickHouseException
+import com.clickhouse.client.ClickHouseException as OldClickHouseException
 
-trait HttpService extends RoutesProtocols {
+trait HttpService extends RoutesProtocols:
   implicit val system: ActorSystem
-  implicit val materializer: Materializer
   implicit val executionContext: ExecutionContextExecutor
   implicit val jobRunService: JobRunService
 
@@ -35,48 +35,42 @@ trait HttpService extends RoutesProtocols {
 
   private val log = Logger[HttpService]
 
-  def composeRoutes: Reader[ExecutionContextExecutor, Route] = {
+  def composeRoutes: Reader[ExecutionContextExecutor, Route] =
     log.debug("composeRoutes started")
 
-    val res = for {
+    val res = for
       jobs       <- JobsRoutes.fromExecutionContext(blockingExecutorContext)
       monitoring <- MonitoringRoutes.fromExecutionContext(jobRunService)
       validation <- ValidationRoutes.fromExecutionContext()
-    } yield jobs ~ monitoring ~ validation
+    yield jobs ~ monitoring ~ validation
 
     log.debug("composeRoutes finished")
     res
-  }
 
-  def route: Route = {
+  def route: Route =
     log.debug("route started")
-    val res = (logRequestAndResponse & handleErrors) {
-      ignoreTrailingSlash {
+    val res = (logRequestAndResponse & handleErrors):
+      ignoreTrailingSlash:
         composeRoutes.run(executionContext).andThen { futureRoute =>
           futureRoute.onComplete { _ =>
             System.gc()
           } // perform full GC after each route
           futureRoute
         }
-      }
-    }
     log.debug("route finished")
     res
-  }
 
-  def logRequestAndResponse: Directive[Unit] = {
+  def logRequestAndResponse: Directive[Unit] =
     log.debug("logRequestAndResponse started")
     val res = logRequest(log.info(_)) & logResponse(log.info(_))
     log.debug("logRequestAndResponse finished")
     res
-  }
 
-  def handleErrors: Directive[Unit] = {
+  def handleErrors: Directive[Unit] =
     log.debug("handleErrors started")
     val res = handleRejections(rejectionsHandler) & handleExceptions(exceptionsHandler)
     log.debug("handleErrors finished")
     res
-  }
 
   implicit def rejectionsHandler: RejectionHandler = RejectionHandler
     .newBuilder()
@@ -99,64 +93,61 @@ trait HttpService extends RoutesProtocols {
     }*/
     .result()
 
-  implicit def exceptionsHandler: ExceptionHandler = ExceptionHandler {
-    case ex: Exception => // TODO Extract from jobs (ADT?)
+  implicit def exceptionsHandler: ExceptionHandler = ExceptionHandler:
+    case InvalidRequest(msg) =>
+      log.error(msg)
+      complete((BadRequest, FailureResponse(4005, "Invalid request", Seq(msg))))
+
+    case ex @ (_: NewClickHouseException | _: OldClickHouseException) => // TODO Extract from jobs (ADT?)
       val stackTrace = Exceptions.getStackTrace(ex)
-      val msg = if (ex.getCause != null) ex.getCause.getLocalizedMessage else ex.getMessage
+      val msg = if ex.getCause != null then ex.getCause.getLocalizedMessage else ex.getMessage
       val error = s"Uncaught error during connection to Clickhouse, cause - `${msg}`, \n\nstacktrace: `$stackTrace`"
       log.error(error)
       complete(
         (
           InternalServerError,
-          FailureResponse(5001, "Job execution failure", if (!isHideExceptions) Seq(error) else Seq.empty)
+          FailureResponse(5001, "Job execution failure", if !isHideExceptions then Seq(error) else Seq.empty)
         )
       )
-
-    /*case ex: JobExecutionException =>
-      val stackTrace = Exceptions.getStackTrace(ex)
-      val msg = if (ex.getCause != null) ex.getCause.getLocalizedMessage else ex.getMessage
-      val error = s"Uncaught error during job execution, cause - `${msg}`, \n\nstacktrace: `$stackTrace`"
-      log.error(error)
-      complete(
-        (
-          InternalServerError,
-          FailureResponse(5002, "Job execution failure", if (!isHideExceptions) Seq(error) else Seq.empty)
-        )
-      )*/
-
-    case InvalidRequest(msg) =>
-      log.error(msg)
-      complete((BadRequest, FailureResponse(4005, "Invalid request", Seq(msg))))
 
     case ex @ (_: RuntimeException | _: java.io.IOException) =>
       val stackTrace = Exceptions.getStackTrace(ex)
-      val msg = if (ex.getCause != null) ex.getCause.getLocalizedMessage else ex.getMessage
+      val msg = if ex.getCause != null then ex.getCause.getLocalizedMessage else ex.getMessage
       val error = s"Uncaught error during request handling, cause - `${msg}`, \n\nstacktrace: `$stackTrace`"
       log.error(error)
       complete(
         (
           InternalServerError,
-          FailureResponse(5005, "Request handling failure", if (!isHideExceptions) Seq(error) else Seq.empty)
+          FailureResponse(5005, "Request handling failure", if !isHideExceptions then Seq(error) else Seq.empty)
         )
       )
 
+    // case ex: JobExecutionException =>
+    //   val stackTrace = Exceptions.getStackTrace(ex)
+    //   val msg = if (ex.getCause != null) ex.getCause.getLocalizedMessage else ex.getMessage
+    //   val error = s"Uncaught error during job execution, cause - `${msg}`, \n\nstacktrace: `$stackTrace`"
+    //   log.error(error)
+    //   complete(
+    //     (
+    //       InternalServerError,
+    //       FailureResponse(5002, "Job execution failure", if (!isHideExceptions) Seq(error) else Seq.empty)
+    //     )
+    //   )
+    //
     case ex: Exception =>
       val stackTrace = Exceptions.getStackTrace(ex)
-      val msg = if (ex.getCause != null) ex.getCause.getLocalizedMessage else ex.getMessage
+      val msg = if ex.getCause != null then ex.getCause.getLocalizedMessage else ex.getMessage
       val error = s"Uncaught error during request handling, cause - `${msg}`, \n\nstacktrace: `$stackTrace`"
       log.error(error)
       complete(
         (
           InternalServerError,
-          FailureResponse(5008, "Request handling failure", if (!isHideExceptions) Seq(error) else Seq.empty)
+          FailureResponse(5008, "Request handling failure", if !isHideExceptions then Seq(error) else Seq.empty)
         )
       )
-  }
 
   def getEnvVarOrConfig(envVarName: String, configPath: String): String =
     Properties.envOrNone(envVarName).getOrElse(configs.getString(configPath))
 
   def getEnvVarOrNone(envVarName: String): Option[String] =
     Properties.envOrNone(envVarName)
-
-}

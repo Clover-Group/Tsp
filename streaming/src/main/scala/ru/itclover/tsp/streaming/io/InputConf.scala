@@ -1,6 +1,6 @@
 package ru.itclover.tsp.streaming.io
 
-trait InputConf[Event, EKey, EItem] extends Serializable {
+trait InputConf[Event, EKey, EItem] extends Serializable:
   def datetimeField: String
   def partitionFields: Seq[String]
   def additionalFields: Option[Seq[String]] // Fields which are stored in an incident but not subject to partitioning
@@ -23,4 +23,3 @@ trait InputConf[Event, EKey, EItem] extends Serializable {
 
   // Set maximum number of physically independent partitions for stream.keyBy operation
   def maxPartitionsParallelism: Int = 8192
-}

@@ -12,11 +12,11 @@ import spray.json.{JsBoolean, JsNumber, JsString, JsValue}
 @SuppressWarnings(
   Array("org.wartremover.warts.NonUnitStatements", "org.wartremover.warts.Any", "org.wartremover.warts.AsInstanceOf")
 )
-class RoutesProtocolsFormatTest extends AnyFlatSpec with Matchers with RoutesProtocols {
+class RoutesProtocolsFormatTest extends AnyFlatSpec with Matchers with RoutesProtocols:
 
   case class TestClass(value: Int)
 
-  "RoutesProtocols AnyRef format" should "correctly handle JSON" in {
+  "RoutesProtocols AnyRef format" should "correctly handle JSON" in:
     propertyFormat.write(1.asInstanceOf[AnyRef]) shouldBe JsNumber(1)
     propertyFormat.write(1L.asInstanceOf[AnyRef]) shouldBe JsNumber(1)
     propertyFormat.write(true.asInstanceOf[AnyRef]) shouldBe JsBoolean(true)
@@ -25,9 +25,8 @@ class RoutesProtocolsFormatTest extends AnyFlatSpec with Matchers with RoutesPro
     propertyFormat.read(JsNumber(1.0)) shouldBe 1.asInstanceOf[AnyRef]
     propertyFormat.read(JsString("test")) shouldBe "test"
     propertyFormat.read(JsBoolean(true)) shouldBe true.asInstanceOf[AnyRef]
-  }
 
-  "RoutesProtocols Any format" should "correctly handle JSON" in {
+  "RoutesProtocols Any format" should "correctly handle JSON" in:
     anyFormat.write(1) shouldBe JsNumber(1)
     anyFormat.write(1L) shouldBe JsNumber(1)
     anyFormat.write(true) shouldBe JsBoolean(true)
@@ -36,9 +35,8 @@ class RoutesProtocolsFormatTest extends AnyFlatSpec with Matchers with RoutesPro
     anyFormat.read(JsNumber(1.0)) shouldBe 1
     anyFormat.read(JsString("test")) shouldBe "test"
     anyFormat.read(JsBoolean(true)) shouldBe true
-  }
 
-  "SDT formats" should "work" in {
+  "SDT formats" should "work" in:
     sdtFormat[Any, String, String]
       .write(NarrowDataUnfolding("key", "value", Map.empty[String, Long])) shouldBe a[JsValue]
     sdtFormat[Any, String, String].write(
@@ -46,6 +44,3 @@ class RoutesProtocolsFormatTest extends AnyFlatSpec with Matchers with RoutesPro
     ) shouldBe a[
       JsValue
     ]
-  }
-
-}

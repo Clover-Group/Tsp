@@ -1,8 +1,7 @@
 package ru.itclover.tsp.http.routes
 
 import akka.actor.ActorSystem
-import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
-import akka.http.scaladsl.model.StatusCodes.{PermanentRedirect, LoopDetected, BadRequest, InternalServerError}
+import akka.http.scaladsl.model.StatusCodes.{LoopDetected, BadRequest, InternalServerError}
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import akka.stream.Materializer
@@ -22,9 +21,8 @@ import ru.itclover.tsp.http.domain.output.FailureResponse
 import ru.itclover.tsp.streaming.utils.ErrorsADT.JobLimitErr
 import ru.itclover.tsp.streaming.utils.ErrorsADT.ConfigErr
 import ru.itclover.tsp.streaming.utils.ErrorsADT.RuntimeErr
-import ru.itclover.tsp.http.domain.output.SuccessfulResponse
 
-trait JobsRoutes extends RoutesProtocols {
+trait JobsRoutes extends RoutesProtocols:
   implicit val executionContext: ExecutionContextExecutor
   val blockingExecutionContext: ExecutionContextExecutor
   implicit val actorSystem: ActorSystem
@@ -35,32 +33,28 @@ trait JobsRoutes extends RoutesProtocols {
 
   Logger[JobsRoutes]
 
-  implicit object statusFormat extends JsonFormat[Map[String, String | Int]] {
+  implicit object statusFormat extends JsonFormat[Map[String, String | Int]]:
 
-    override def read(json: JsValue): Map[String, String | Int] = json match {
+    override def read(json: JsValue): Map[String, String | Int] = json match
       case JsObject(fields) =>
         fields.map { case (k, v) =>
-          v match {
+          v match
             case JsNumber(value) => (k, value.toIntExact)
             case JsString(value) => (k, value)
             case _               => throw DeserializationException(s"Value must be string or number, but $v found")
-          }
         }
       case _ => throw DeserializationException(s"Value must be object, but $json found")
-    }
 
     override def write(obj: Map[String, String | Int]): JsValue = JsObject(obj.map {
       case (k, v: String) => (k, JsString(v))
       case (k, v: Int)    => (k, JsNumber(v))
     })
 
-  }
-
   val route: Route =
-    path("job" / "submit"./) {
+    path("job" / "submit"./):
       entity(as[FindPatternsRequest[RowWithIdx, String, Any, Row]]) { request =>
         val result = jobRunService.process(request)
-        result match {
+        result match
           case Right(_) =>
             complete(
               Map(
@@ -71,26 +65,21 @@ trait JobsRoutes extends RoutesProtocols {
               ).toJson
             )
           case Left(e) =>
-            e match {
+            e match
               case jle: JobLimitErr => complete((LoopDetected, FailureResponse(jle.errorCode, jle.error, Seq.empty)))
               case ce: ConfigErr    => complete((BadRequest, FailureResponse(ce)))
               case re: RuntimeErr   => complete((InternalServerError, FailureResponse(re)))
-              case _                => complete((InternalServerError, FailureResponse(5990, "Unknown error", Seq.empty)))
-            }
-        }
+              case null             => complete((InternalServerError, FailureResponse(5990, "Unknown error", Seq.empty)))
       }
-    }
 
-}
-
-object JobsRoutes {
+object JobsRoutes:
 
   private val log = Logger[JobsRoutes]
 
   def fromExecutionContext(blocking: ExecutionContextExecutor)(implicit
     as: ActorSystem,
     am: Materializer
-  ): Reader[ExecutionContextExecutor, Route] = {
+  ): Reader[ExecutionContextExecutor, Route] =
 
     log.debug("fromExecutionContext started")
 
@@ -109,7 +98,4 @@ object JobsRoutes {
       }.route
     }
 
-  }
-
   log.debug("fromExecutionContext finished")
-}

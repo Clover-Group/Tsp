@@ -7,7 +7,7 @@ import java.io.{ByteArrayInputStream, ByteArrayOutputStream, ObjectInputStream, 
 
 trait Request
 
-sealed trait QueueableRequest extends Request with Ordered[QueueableRequest] with Serializable {
+sealed trait QueueableRequest extends Request with Ordered[QueueableRequest] with Serializable:
   def priority: Int
   def uuid: String
 
@@ -17,24 +17,18 @@ sealed trait QueueableRequest extends Request with Ordered[QueueableRequest] wit
 
   val maxLength = 1000000
 
-  def serialize: Array[Byte] = {
+  def serialize: Array[Byte] =
     val baos = new ByteArrayOutputStream(maxLength)
     val oos = new ObjectOutputStream(baos)
     oos.writeObject(this)
     oos.close
     baos.toByteArray
-  }
 
-}
+object QueueableRequest:
 
-object QueueableRequest {
-
-  def deserialize(data: Array[Byte]): QueueableRequest = {
+  def deserialize(data: Array[Byte]): QueueableRequest =
     val ois = new ObjectInputStream(new ByteArrayInputStream(data))
     ois.readObject().asInstanceOf[QueueableRequest]
-  }
-
-}
 
 final case class FindPatternsRequest[Event, EKey, EItem, OutEvent](
   override val uuid: String,
@@ -42,13 +36,11 @@ final case class FindPatternsRequest[Event, EKey, EItem, OutEvent](
   outConf: Seq[OutputConf[OutEvent]],
   override val priority: Int,
   patterns: Seq[RawPattern]
-) extends QueueableRequest {
+) extends QueueableRequest:
 
   override def requiredSlots: Int =
     (inputConf.parallelism.getOrElse(1)
       * inputConf.patternsParallelism.getOrElse(1)
       * inputConf.numParallelSources.getOrElse(1))
-
-}
 
 final case class DSLPatternRequest(pattern: String) extends Request

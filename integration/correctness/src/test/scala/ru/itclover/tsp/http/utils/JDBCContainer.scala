@@ -6,7 +6,7 @@ import com.dimafeng.testcontainers.SingleContainer
 import org.testcontainers.containers.wait.strategy.WaitStrategy
 import org.testcontainers.containers.{BindMode, GenericContainer => OTCGenericContainer}
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 // Default arguments for constructing a container are useful
 @SuppressWarnings(Array("org.wartremover.warts.DefaultArguments"))
@@ -19,45 +19,39 @@ class JDBCContainer(
   command: Seq[String] = Seq(),
   classpathResourceMapping: Seq[(String, String, BindMode)] = Seq(),
   waitStrategy: Option[WaitStrategy] = None
-) extends SingleContainer[OTCGenericContainer[_]] {
+) extends SingleContainer[OTCGenericContainer[?]]:
 
   implicit override val container = new OTCGenericContainer(imageName)
 
-  if (portsBindings.nonEmpty) {
+  if portsBindings.nonEmpty then
     val bindings = portsBindings.map { case (out, in) => s"${out.toString}:${in.toString}" }
     val exposedPorts = portsBindings.map(_._2)
     container.setPortBindings(bindings.asJava)
-    container.addExposedPorts(exposedPorts: _*)
-  }
+    container.addExposedPorts(exposedPorts*)
 
   env.foreach(container.withEnv(_, _))
 
-  if (command.nonEmpty) {
-    val _ = container.withCommand(command: _*)
-  }
+  if command.nonEmpty then
+    val _ = container.withCommand(command*)
 
   classpathResourceMapping.foreach(container.withClasspathResourceMapping(_, _, _))
   waitStrategy.foreach(container.waitingFor)
 
   // We cannot initialise `connection` here yet
   @SuppressWarnings(Array("org.wartremover.warts.Null", "org.wartremover.warts.Var"))
-  var connection: Connection = _
+  var connection: Connection = scala.compiletime.uninitialized
 
-  override def start(): Unit = {
+  override def start(): Unit =
     super.start()
     Thread.sleep(8000)
-    connection = {
+    connection =
       val _ = Class.forName(driverName)
       DriverManager.getConnection(jdbcUrl)
-    }
-  }
 
-  override def stop(): Unit = {
+  override def stop(): Unit =
     super.stop()
     connection.close()
-  }
 
   def executeQuery(sql: String): ResultSet = connection.createStatement().executeQuery(sql)
 
   def executeUpdate(sql: String): Int = connection.createStatement().executeUpdate(sql)
-}

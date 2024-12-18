@@ -8,7 +8,6 @@ import spray.json.RootJsonFormat
 
 case class ValidationResult(pattern: RawPattern, success: Boolean, context: String)
 
-trait PatternsValidatorProtocols extends SprayJsonSupport with DefaultJsonProtocol with GeneralProtocols {
+trait PatternsValidatorProtocols extends SprayJsonSupport with DefaultJsonProtocol with GeneralProtocols:
   implicit val patterns: RootJsonFormat[PatternsValidatorConf] = jsonFormat2(PatternsValidatorConf.apply)
   implicit val patternResult: RootJsonFormat[ValidationResult] = jsonFormat3(ValidationResult.apply)
-}

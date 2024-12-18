@@ -15,9 +15,9 @@ abstract class TestContext
   */
 abstract class AbstractContextBuilder[Type, State] {
 
-  var patterns: Seq[Pattern[Event[Type], State, Type]] = _
-  var events: Seq[Event[Type]] = _
-  var finalState: State = _
+  var patterns: Seq[Pattern[Event[Type], State, Type]] = scala.compiletime.uninitialized
+  var events: Seq[Event[Type]] = scala.compiletime.uninitialized
+  var finalState: State = scala.compiletime.uninitialized
 
   def withPatterns(patterns: Seq[Pattern[Event[Type], State, Type]]): AbstractContextBuilder[Type, State]
   def withEvents(events: Seq[Event[Type]]): AbstractContextBuilder[Type, State]

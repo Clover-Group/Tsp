@@ -16,11 +16,10 @@ import com.typesafe.scalalogging.Logger
 import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContext, ExecutionContextExecutor}
 import scala.io.StdIn
-import akka.stream.ActorMaterializer
 import java.net.InetAddress
 import scala.util.Try
 
-object Launcher extends App with HttpService {
+object Launcher extends App with HttpService:
   private val configs = ConfigFactory.load()
   override val isDebug: Boolean = configs.getBoolean("general.is-debug")
   private val log = Logger("Launcher")
@@ -53,7 +52,6 @@ object Launcher extends App with HttpService {
           """.stripMargin)
   )
 
-  implicit val materializer: Materializer = ActorMaterializer()
   implicit val executionContext: ExecutionContextExecutor = system.dispatcher
 
   // to run blocking tasks.
@@ -71,95 +69,81 @@ object Launcher extends App with HttpService {
 
   private val host = configs.getString("http.host")
   private val port = configs.getInt("http.port")
-  val bindingFuture = Http().bindAndHandle(route, host, port)
+  val bindingFuture = Http().newServerAt(host, port).bindFlow(route)
 
-  log.info(s"Service online at http://$host:$port/" + (if (isDebug) " in debug mode." else ""))
+  log.info(s"Service online at http://$host:$port/" + (if isDebug then " in debug mode." else ""))
   val coordinator = getCoordinatorHostPort
 
   coordinator.foreach { case (enabled, host, port) =>
-    if (enabled) {
+    if enabled then
       val uri = s"http://$host:$port"
       log.warn(s"TSP coordinator connection enabled: connecting to $uri...")
-      val advHost = if (getEnvVarOrNone("TSP_ADVERTISE_LOCAL_IP").isDefined) {
-        Some(InetAddress.getLocalHost.getHostAddress)
-      } else {
-        getEnvVarOrNone("TSP_ADVERTISED_HOST")
-      }
+      val advHost =
+        if getEnvVarOrNone("TSP_ADVERTISE_LOCAL_IP").isDefined then Some(InetAddress.getLocalHost.getHostAddress)
+        else getEnvVarOrNone("TSP_ADVERTISED_HOST")
       val advPort = getEnvVarOrNone("TSP_ADVERTISED_PORT")
       CoordinatorService.getOrCreate(uri, advHost, advPort.flatMap(_.toIntOption)).notifyRegister()
-
-    } else {
-      log.warn("TSP coordinator connection disabled.")
-    }
+    else log.warn("TSP coordinator connection disabled.")
   }
 
   val checkpointing = getCheckpointingHostPort
 
   checkpointing.foreach { case (enabled, host, port) =>
-    if (enabled) {
+    if enabled then
       val uri = s"redis://$host:$port"
       log.warn(s"TSP checkpointing enabled: registering service on $uri...")
       CheckpointingService.getOrCreate(Some(uri))
-    } else {
+    else
       log.warn("TSP checkpointing disabled.")
       CheckpointingService.getOrCreate(None)
-    }
   }
 
-  if (configs.getBoolean("general.is-follow-input")) {
+  if configs.getBoolean("general.is-follow-input") then
     log.info("Press RETURN to stop...")
     StdIn.readLine()
     log.info("Terminating...")
     bindingFuture
       .flatMap(_.unbind())
       .onComplete(_ => Await.result(system.whenTerminated.map(_ => log.info("Terminated... Bye!")), 60.seconds))
-  } else {
-    scala.sys.addShutdownHook {
+  else
+    scala.sys.addShutdownHook:
       log.info("Terminating...")
       system.terminate()
       Await.result(system.whenTerminated, 60.seconds)
       log.info("Terminated... Bye!")
-    }
-  }
 
-  def getCoordinatorHostPort: Either[String, (Boolean, String, Int)] = {
+  def getCoordinatorHostPort: Either[String, (Boolean, String, Int)] =
     val enabledStr = getEnvVarOrConfig("COORDINATOR_ENABLED", "coordinator.enabled")
     val host = getEnvVarOrConfig("COORDINATOR_HOST", "coordinator.host")
     val portStr = getEnvVarOrConfig("COORDINATOR_PORT", "coordinator.port")
     val port = Either.catchNonFatal(portStr.toInt).left.map { (ex: Throwable) =>
       s"Cannot parse COORDINATOR_PORT ($portStr): ${ex.getMessage}"
     }
-    val enabled = Either.catchNonFatal(enabledStr.toBoolean) match {
+    val enabled = Either.catchNonFatal(enabledStr.toBoolean) match
       case Left(ex) => {
         log.warn(s"Cannot parse COORDINATOR_ENABLED ($enabledStr), defaulting to false:  ${ex.getMessage}")
         false
       }
       case Right(value) => value
-    }
     port.map(p => (enabled, host, p))
-  }
 
-  def getCheckpointingHostPort: Either[String, (Boolean, String, Int)] = {
+  def getCheckpointingHostPort: Either[String, (Boolean, String, Int)] =
     val enabledStr = getEnvVarOrConfig("CHECKPOINTING_ENABLED", "checkpointing.enabled")
     val host = getEnvVarOrConfig("CHECKPOINTING_HOST", "checkpointing.host")
     val portStr = getEnvVarOrConfig("CHECKPOINTING_PORT", "checkpointing.port")
     val port = Either.catchNonFatal(portStr.toInt).left.map { (ex: Throwable) =>
       s"Cannot parse CHECKPOINTING_PORT ($portStr): ${ex.getMessage}"
     }
-    val enabled = Either.catchNonFatal(enabledStr.toBoolean) match {
+    val enabled = Either.catchNonFatal(enabledStr.toBoolean) match
       case Left(ex) => {
         log.warn(s"Cannot parse CHECKPOINTING_ENABLED ($enabledStr), defaulting to false:  ${ex.getMessage}")
         false
       }
       case Right(value) => value
-    }
     port.map(p => (enabled, host, p))
-  }
 
-  def getMaxTotalJobCount = {
+  def getMaxTotalJobCount =
     val jobCountStr = getEnvVarOrNone("MAX_TOTAL_JOB_COUNT")
     Try(jobCountStr.map(_.toInt)).toOption.flatten.getOrElse(Int.MaxValue)
-  }
 
   implicit val jobRunService = JobRunService.getOrCreate("mgr", getMaxTotalJobCount, blockingExecutorContext)
-}

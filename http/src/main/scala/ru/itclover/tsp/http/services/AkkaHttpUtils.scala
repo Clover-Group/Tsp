@@ -8,18 +8,15 @@ import akka.stream.Materializer
 
 import scala.concurrent.{ExecutionContext, Future}
 
-object AkkaHttpUtils {
+object AkkaHttpUtils:
 
   def queryToEither[L, R](fullUri: Uri, method: HttpMethod = HttpMethods.GET)(implicit
     unm: FromEntityUnmarshaller[Either[L, R]],
     as: ActorSystem,
     am: Materializer,
     ec: ExecutionContext
-  ): Future[Either[L, R]] = {
+  ): Future[Either[L, R]] =
     val raw = Http().singleRequest(HttpRequest(uri = fullUri, method = method))
     raw.flatMap { rs =>
       Unmarshal(rs.entity).to[Either[L, R]]
     }
-  }
-
-}

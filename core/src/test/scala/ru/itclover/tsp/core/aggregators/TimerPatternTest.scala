@@ -30,11 +30,11 @@ class TimerPatternTest extends AnyWordSpec with Matchers {
 
     "match-for-valid-1" in {
 
-      val events = (for (
-        time <- Timer(from = Instant.now());
-        idx  <- Increment;
-        row  <- Constant(0).timed(40.seconds).after(Constant(1))
-      )
+      val events =
+        (for
+          time <- Timer(from = Instant.now());
+          idx  <- Increment;
+          row  <- Constant(0).timed(40.seconds).after(Constant(1))
         yield Event[Int](time.toEpochMilli, idx.toLong, row, 0)).run(seconds = 100)
       val collect = new ArrayBuffer[IdxValue[Boolean]]()
       StateMachine[Id].run(pattern, (1, 1), events, pattern.initialState(), (x: IdxValue[Boolean]) => collect += x)
@@ -47,12 +47,11 @@ class TimerPatternTest extends AnyWordSpec with Matchers {
 
     "match-for-valid-2" in {
 
-      val events = (for (
+      val events = (for
         time <- Timer(from = Instant.now());
         idx  <- Increment;
         row  <- Constant(1).timed(40.seconds).after(Constant(0))
-      )
-        yield Event[Int](time.toEpochMilli, idx.toLong, row, 0)).run(seconds = 100)
+      yield Event[Int](time.toEpochMilli, idx.toLong, row, 0)).run(seconds = 100)
       val collect = new ArrayBuffer[IdxValue[Boolean]]()
       StateMachine[Id].run(pattern, (1, 1), events, pattern.initialState(), (x: IdxValue[Boolean]) => collect += x)
 

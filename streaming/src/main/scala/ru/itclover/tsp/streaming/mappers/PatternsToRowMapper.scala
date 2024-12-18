@@ -15,42 +15,37 @@ import scala.util.Try
 
 /** Packer of found incident into [[Row]]
   */
-case class PatternsToRowMapper[Event, EKey](schema: EventSchema) {
+case class PatternsToRowMapper[Event, EKey](schema: EventSchema):
 
-  def map(incident: Incident) = schema match {
+  def map(incident: Incident) = schema match
     case newRowSchema: NewRowSchema =>
       val resultRow = new Row(newRowSchema.fieldsCount)
       newRowSchema.data.foreach { case (k, v) =>
         val pos = newRowSchema.fieldsIndices(String(k))
-        v match {
+        v match
           case value: IntESValue   => resultRow(pos) = convertFromInt(value.value, value.`type`).asInstanceOf[AnyRef]
           case value: FloatESValue => resultRow(pos) = convertFromFloat(value.value, value.`type`).asInstanceOf[AnyRef]
           case value: StringESValue =>
             resultRow(pos) =
               convertFromString(interpolateString(value.value, incident), value.`type`).asInstanceOf[AnyRef]
           case value: ObjectESValue => resultRow(pos) = mapToJson(convertFromObject(value.value, incident))
-        }
       }
       resultRow
-  }
 
-  def mapToJson(data: Map[String, Any]): String = {
+  def mapToJson(data: Map[String, Any]): String =
     val mapper = new ObjectMapper()
     mapper.registerModule(DefaultScalaModule)
     mapper.writeValueAsString(data)
-  }
 
-  def nowInUtcMillis: Long = {
+  def nowInUtcMillis: Long =
     val zonedDt = ZonedDateTime.of(LocalDateTime.now, ZoneId.systemDefault)
     val utc = zonedDt.withZoneSameInstant(ZoneId.of("UTC"))
     Timestamp.valueOf(utc.toLocalDateTime).getTime
-  }
 
-  def toJsonString(ctx: Map[String, String]): String = {
+  def toJsonString(ctx: Map[String, String]): String =
     ctx.toJson.toString()
-  }
 
-  def interpolateString(value: String, incident: Incident): String = {
+  def interpolateString(value: String, incident: Incident): String =
     val replaced = value
       .replace("$IncidentID", incident.id)
       .replace("$UUID", incident.incidentUUID.toString)
@@ -88,10 +83,9 @@ case class PatternsToRowMapper[Event, EKey](schema: EventSchema) {
       .replace("$PatternMetadata", incident.patternMetadata.toJson.compactPrint)
       .replace("$PartitionFieldsValues", incident.partitionFieldsValues.toJson.compactPrint)
       .replace("$AdditionalFieldsValues", incident.additionalFieldsValues.toJson.compactPrint)
-  }
 
-  def convertFromInt(value: Long, toType: String): Any = {
-    toType match {
+  def convertFromInt(value: Long, toType: String): Any =
+    toType match
       case "int8"      => value.toByte
       case "int16"     => value.toShort
       case "int32"     => value.toInt
@@ -103,11 +97,9 @@ case class PatternsToRowMapper[Event, EKey](schema: EventSchema) {
       case "timestamp" => Timestamp.from(Instant.ofEpochSecond(value))
       case "object"    => value
       case _           =>
-    }
-  }
 
-  def convertFromFloat(value: Double, toType: String): Any = {
-    toType match {
+  def convertFromFloat(value: Double, toType: String): Any =
+    toType match
       case "int8"      => value.toByte
       case "int16"     => value.toShort
       case "int32"     => value.toInt
@@ -119,11 +111,9 @@ case class PatternsToRowMapper[Event, EKey](schema: EventSchema) {
       case "timestamp" => Timestamp.from(Instant.ofEpochSecond(value.toLong, ((value - value.toLong) * 1e9).toInt))
       case "object"    => value
       case _           =>
-    }
-  }
 
-  def convertFromString(value: String, toType: String): Any = {
-    toType match {
+  def convertFromString(value: String, toType: String): Any =
+    toType match
       case "int8"    => Try(value.toByte).getOrElse(0.toByte)
       case "int16"   => Try(value.toShort).getOrElse(0.toShort)
       case "int32"   => Try(value.toInt).getOrElse(0.toInt)
@@ -136,19 +126,13 @@ case class PatternsToRowMapper[Event, EKey](schema: EventSchema) {
       case "timestamp" => Timestamp.valueOf(value)
       case "object"    => value
       case _           =>
-    }
-  }
 
-  def convertFromObject(value: Map[String, EventSchemaValue], incident: Incident): Map[String, Any] = {
+  def convertFromObject(value: Map[String, EventSchemaValue], incident: Incident): Map[String, Any] =
     value.map { case (k, v) =>
-      val s = v match {
+      val s = v match
         case value: IntESValue    => convertFromInt(value.value, value.`type`)
         case value: FloatESValue  => convertFromFloat(value.value, value.`type`)
         case value: StringESValue => convertFromString(interpolateString(value.value, incident), value.`type`)
         case value: ObjectESValue => convertFromObject(value.value, incident)
-      }
       (k, s)
     }
-  }
-
-}

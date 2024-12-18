@@ -55,11 +55,8 @@ case class JDBCInputConf(
   patternsParallelism: Option[Int] = Some(1),
   timestampMultiplier: Option[Double] = Some(1000.0),
   writeTimeLogs: Option[Boolean] = Some(false)
-) extends InputConf[RowWithIdx, String, Any] {
+) extends InputConf[RowWithIdx, String, Any]:
 
-  def fixedDriverName: String = driverName match {
+  def fixedDriverName: String = driverName match
     case "ru.yandex.clickhouse.ClickHouseDriver" => "com.clickhouse.jdbc.ClickHouseDriver"
     case _                                       => driverName
-  }
-
-}

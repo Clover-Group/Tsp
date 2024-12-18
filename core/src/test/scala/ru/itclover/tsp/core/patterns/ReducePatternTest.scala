@@ -23,11 +23,11 @@ import scala.concurrent.duration._
 class ReducePatternTest extends AnyWordSpec with Matchers {
   val pat = Patterns[EInt]
 
-  val events = (for (
-    time <- Timer(from = Instant.now());
-    idx  <- Increment;
-    row  <- Constant(0).timed(40.seconds).after(Constant(1))
-  )
+  val events =
+    (for
+      time <- Timer(from = Instant.now());
+      idx  <- Increment;
+      row  <- Constant(0).timed(40.seconds).after(Constant(1))
     yield Event[Int](time.toEpochMilli, idx.toLong, row, -row)).run(seconds = 100)
 
   implicit val applicativeResult: Apply[Result] = new Apply[Result] {

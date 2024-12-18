@@ -8,7 +8,7 @@ import ru.itclover.tsp.StreamSource.Row
 
 // Pattern converting from value returns Any by design
 @SuppressWarnings(Array("org.wartremover.warts.Any"))
-class PatternsToRowMapperTest extends AnyFlatSpec with Matchers {
+class PatternsToRowMapperTest extends AnyFlatSpec with Matchers:
 
   val eventSchema: NewRowSchema = NewRowSchema(
     Map(
@@ -18,7 +18,7 @@ class PatternsToRowMapperTest extends AnyFlatSpec with Matchers {
 
   val mapper: PatternsToRowMapper[Row, String] = PatternsToRowMapper(eventSchema)
 
-  "PatternsToRowMapper" should "convert from integer" in {
+  "PatternsToRowMapper" should "convert from integer" in:
     mapper.convertFromInt(0, "boolean") shouldBe false
     mapper.convertFromInt(1, "boolean") shouldBe true
     mapper.convertFromInt(101, "int8") shouldBe 101.toByte
@@ -29,9 +29,8 @@ class PatternsToRowMapperTest extends AnyFlatSpec with Matchers {
     mapper.convertFromInt(106, "float64") shouldBe 106.0
     mapper.convertFromInt(107, "string") shouldBe "107"
     mapper.convertFromInt(108, "object") shouldBe 108
-  }
 
-  "PatternsToRowMapper" should "convert from string" in {
+  "PatternsToRowMapper" should "convert from string" in:
     mapper.convertFromString("0", "boolean") shouldBe false
     mapper.convertFromString("1", "boolean") shouldBe true
     mapper.convertFromString("false", "boolean") shouldBe false
@@ -49,9 +48,8 @@ class PatternsToRowMapperTest extends AnyFlatSpec with Matchers {
     mapper.convertFromString("106", "float64") shouldBe 106.0
     mapper.convertFromString("107", "string") shouldBe "107"
     mapper.convertFromString("108", "object") shouldBe "108"
-  }
 
-  "PatternsToRowMapper" should "convert from float" in {
+  "PatternsToRowMapper" should "convert from float" in:
     mapper.convertFromFloat(0.0, "boolean") shouldBe false
     mapper.convertFromFloat(1.0, "boolean") shouldBe true
     mapper.convertFromFloat(101.0, "int8") shouldBe 101.toByte
@@ -62,6 +60,3 @@ class PatternsToRowMapperTest extends AnyFlatSpec with Matchers {
     mapper.convertFromFloat(106.0, "float64") shouldBe 106.0
     mapper.convertFromFloat(107.0, "string") shouldBe "107.0"
     mapper.convertFromFloat(108.0, "object") shouldBe 108.0
-  }
-
-}

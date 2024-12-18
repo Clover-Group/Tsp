@@ -21,10 +21,9 @@ case class KafkaInputConf(
   numParallelSources: Option[Int] = Some(1),
   fieldsTypes: Map[String, String],
   writeTimeLogs: Option[Boolean] = Some(false)
-) extends InputConf[RowWithIdx, String, Any] {
+) extends InputConf[RowWithIdx, String, Any]:
 
   def defaultEventsGapMs: Option[Long] = Some(0L)
   def defaultToleranceFraction: Option[Double] = None
   def parallelism: Option[Int] = Some(1)
   def patternsParallelism: Option[Int] = Some(1)
-}

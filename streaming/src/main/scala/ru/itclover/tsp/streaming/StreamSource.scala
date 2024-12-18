@@ -1,7 +1,5 @@
 package ru.itclover.tsp
 
-import scala.concurrent.ExecutionContext.Implicits.global
-
 import cats.effect._
 import cats.implicits._
 import com.typesafe.scalalogging.Logger
@@ -10,7 +8,7 @@ import doobie.hikari._
 import com.zaxxer.hikari.HikariConfig
 
 import java.sql.{PreparedStatement, ResultSet}
-import doobie.{ConnectionIO, FC, FPS, FRS, HC, PreparedStatementIO, ResultSetIO, Transactor}
+import doobie.{ConnectionIO, FC, FPS, FRS, PreparedStatementIO, ResultSetIO}
 import doobie.util.stream.repeatEvalChunks
 import fs2.kafka.{AutoOffsetReset, ConsumerSettings, Deserializer, KafkaConsumer}
 import ru.itclover.tsp.StreamSource.Row
@@ -26,25 +24,22 @@ import ru.itclover.tsp.streaming.utils.{
   EventCreatorInstances,
   KeyCreator,
   KeyCreatorInstances,
-  EventPrinter,
-  EventPrinterInstances
+  EventPrinter
 }
 import ru.itclover.tsp.streaming.utils.ErrorsADT._
 import ru.itclover.tsp.streaming.utils.RowOps.{RowSymbolExtractor, RowTsTimeExtractor}
 import ru.itclover.tsp.streaming.utils.EventPrinterInstances
-import doobie.util.log.LogHandler
-import doobie.util.log.LogEvent
 
 // Fields types are only known at runtime, so we have to use Any here
 @SuppressWarnings(Array("org.wartremover.warts.Any"))
-trait StreamSource[Event, EKey, EItem] extends Product with Serializable {
+trait StreamSource[Event, EKey, EItem] extends Product with Serializable:
   def createStream: Resource[IO, fs2.Stream[IO, Event]]
 
   def conf: InputConf[Event, EKey, EItem]
 
-  def fieldsClasses: Seq[(String, Class[_])]
+  def fieldsClasses: Seq[(String, Class[?])]
 
-  def transformedFieldsClasses: Seq[(String, Class[_])] = conf.dataTransformation match {
+  def transformedFieldsClasses: Seq[(String, Class[?])] = conf.dataTransformation match
     case Some(NarrowDataUnfolding(_, _, _, mapping, _, _, _)) =>
       val m: Map[EKey, List[EKey]] = mapping.getOrElse(Map.empty)
       val r = fieldsClasses ++ m.map { case (col, list) =>
@@ -63,14 +58,12 @@ trait StreamSource[Event, EKey, EItem] extends Product with Serializable {
       r
     case _ =>
       fieldsClasses
-  }
 
-  def defaultClass: Class[_] = conf.dataTransformation match {
+  def defaultClass: Class[?] = conf.dataTransformation match
     case Some(NarrowDataUnfolding(_, value, _, _, _, _, _)) =>
       fieldsClasses.find { case (s, _) => fieldToEKey(s) == value }.map(_._2).getOrElse(classOf[Double])
     case _ =>
       classOf[Double]
-  }
 
   def fieldToEKey: String => EKey
 
@@ -98,7 +91,7 @@ trait StreamSource[Event, EKey, EItem] extends Product with Serializable {
 
   implicit def itemToKeyDecoder: Decoder[EItem, EKey] // for narrow data widening
 
-  implicit def kvExtractor: Event => (EKey, EItem) = conf.dataTransformation match {
+  implicit def kvExtractor: Event => (EKey, EItem) = conf.dataTransformation match
     case Some(NarrowDataUnfolding(key, value, _, mapping, _, _, _)) =>
       (r: Event) =>
         // TODO: Maybe optimise that by using intermediate (non-serialised) dictionary
@@ -119,7 +112,6 @@ trait StreamSource[Event, EKey, EItem] extends Product with Serializable {
       (_: Event) => sys.error("Unsupported data transformation")
     case None =>
       (_: Event) => sys.error("No K-V extractor without data transformation")
-  }
 
   implicit def eventCreator: EventCreator[Event, EKey]
 
@@ -132,9 +124,8 @@ trait StreamSource[Event, EKey, EItem] extends Product with Serializable {
   def timeColumn: EKey
 
   def partitionsColumns: Seq[EKey]
-}
 
-object StreamSource {
+object StreamSource:
   type Row = Array[AnyRef]
 
   def findNullField(allFields: Seq[String], excludedFields: Seq[String]) =
@@ -142,29 +133,26 @@ object StreamSource {
       !excludedFields.contains(field)
     }
 
-}
-
 case class RowWithIdx(idx: Idx, row: Row)
 
 // Fields types are only known at runtime, so we have to use Any here
 @SuppressWarnings(Array("org.wartremover.warts.Any"))
-object JdbcSource {
+object JdbcSource:
 
   def create(conf: JDBCInputConf, fields: Set[String]): Either[Err, JdbcSource] =
-    for {
+    for
       types <- JdbcService
         .fetchFieldsTypesInfo(conf.fixedDriverName, conf.jdbcUrl, conf.query)
         .toEither
         .leftMap[ConfigErr](e => SourceUnavailable(Option(e.getMessage).getOrElse(e.toString)))
       newFields <- checkKeysExistence(conf, fields)
-      source <- StreamSource.findNullField(types.map(_._1), conf.datetimeField +: conf.partitionFields) match {
+      source <- StreamSource.findNullField(types.map(_._1), conf.datetimeField +: conf.partitionFields) match
         case Some(nullField) => JdbcSource(conf, types, nullField, newFields).asRight
         case None => InvalidRequest("Source should contain at least one non partition and datatime field.").asLeft
-      }
-    } yield source
+    yield source
 
   def checkKeysExistence(conf: JDBCInputConf, keys: Set[String]): Either[GenericRuntimeErr, Set[String]] =
-    conf.dataTransformation match {
+    conf.dataTransformation match
       case Some(NarrowDataUnfolding(keyColumn, _, _, _, _, _, _)) =>
         JdbcService
           .fetchAvailableKeys(conf.fixedDriverName, conf.jdbcUrl, conf.query, keyColumn)
@@ -172,19 +160,16 @@ object JdbcSource {
           .map(_.intersect(keys))
           .leftMap[GenericRuntimeErr](e => GenericRuntimeErr(e, 5099))
       case _ => Right(keys)
-    }
-
-}
 
 // todo rm nullField and trailing nulls in queries at platform (uniting now done on Flink) after states fix
 // Fields types are only known at runtime, so we have to use Any here
 @SuppressWarnings(Array("org.wartremover.warts.Any"))
 case class JdbcSource(
   conf: JDBCInputConf,
-  fieldsClasses: Seq[(String, Class[_])],
+  fieldsClasses: Seq[(String, Class[?])],
   nullFieldId: String,
   patternFields: Set[String]
-) extends StreamSource[RowWithIdx, String, Any] {
+) extends StreamSource[RowWithIdx, String, Any]:
 
   import conf._
 
@@ -228,8 +213,8 @@ case class JdbcSource(
   )*/
 
   val transactor: Resource[IO, HikariTransactor[IO]] =
-    for {
-      hikariConfig <- Resource.pure {
+    for
+      hikariConfig <- Resource.pure:
         // For the full list of hikari configurations see https://github.com/brettwooldridge/HikariCP#gear-configuration-knobs-baby
         val config = new HikariConfig()
         config.setDriverClassName(conf.fixedDriverName)
@@ -237,29 +222,25 @@ case class JdbcSource(
         config.setUsername(conf.userName.getOrElse(userName))
         config.setPassword(conf.password.getOrElse(password))
         config
-      }
       xa <- HikariTransactor.fromHikariConfig[IO](hikariConfig)
-    } yield xa
+    yield xa
 
-  def getCreds: (String, String) = {
-    try {
+  def getCreds: (String, String) =
+    try
       val query = conf.jdbcUrl.split("\\?", 2).lift(1).getOrElse("")
       val params = query
         .split("&")
         .map(kv => kv.split("=", 2))
-        .map {
+        .map:
           case Array(k)        => (k, "")
           case Array(k, v)     => (k, v)
           case Array(k, v, _*) => (k, v)
-        }
         .toMap
       (params.getOrElse("user", ""), params.getOrElse("password", ""))
-    } catch {
+    catch
       case e: Exception =>
         log.error(s"EXC: ${e.getMessage()}")
         ("", "")
-    }
-  }
 
   def getNextChunk(chunkSize: Int): ResultSetIO[Seq[Row]] =
     FRS.raw { rs =>
@@ -267,12 +248,11 @@ case class JdbcSource(
       val ks = (1 to md.getColumnCount).map(md.getColumnLabel).toList
       var n = chunkSize
       val b = Vector.newBuilder[Row]
-      while (n > 0 && rs.next) {
+      while n > 0 && rs.next do
         val vb = Array.newBuilder[AnyRef]
         ks.foreach(k => vb += rs.getObject(k))
         b += vb.result()
         n -= 1
-      }
       b.result()
     }
 
@@ -281,13 +261,12 @@ case class JdbcSource(
     create: ConnectionIO[PreparedStatement],
     prep: PreparedStatementIO[Unit],
     exec: PreparedStatementIO[ResultSet]
-  ): fs2.Stream[ConnectionIO, Row] = {
+  ): fs2.Stream[ConnectionIO, Row] =
 
     def prepared(ps: PreparedStatement): fs2.Stream[ConnectionIO, PreparedStatement] =
-      fs2.Stream.eval[ConnectionIO, PreparedStatement] {
+      fs2.Stream.eval[ConnectionIO, PreparedStatement]:
         val fs = FPS.setFetchSize(chunkSize)
         FC.embed(ps, fs *> prep).map(_ => ps)
-      }
 
     def unrolled(rs: ResultSet): fs2.Stream[ConnectionIO, Row] =
       repeatEvalChunks(FC.embed(rs, getNextChunk(chunkSize)))
@@ -299,8 +278,6 @@ case class JdbcSource(
       fs2.Stream.bracket(FC.embed(ps, exec))(FC.embed(_, FRS.close)).flatMap(unrolled)
 
     preparedStatement.flatMap(results)
-
-  }
 
   override def createStream: Resource[IO, fs2.Stream[IO, RowWithIdx]] =
     transactor.map { xa =>
@@ -316,32 +293,28 @@ case class JdbcSource(
 
   override def fieldToEKey = { (fieldId: String) =>
     fieldId
-  // fieldsIdxMap(fieldId)
+    // fieldsIdxMap(fieldId)
   }
 
   override def eKeyToField: String => String = { (key: String) =>
     key
   }
 
-  override def partitioner: RowWithIdx => String = {
+  override def partitioner: RowWithIdx => String =
     val serializablePI = partitionsIdx
     (event: RowWithIdx) => serializablePI.map(event.row.apply).mkString
-  }
 
-  override def transformedPartitioner: RowWithIdx => String = {
+  override def transformedPartitioner: RowWithIdx => String =
     val serializablePI = transformedPartitionsIdx
     (event: RowWithIdx) => serializablePI.map(event.row.apply).mkString
-  }
 
-  def tsMultiplier = timestampMultiplier.getOrElse {
+  def tsMultiplier = timestampMultiplier.getOrElse:
     log.trace("timestampMultiplier in JDBC source conf is not provided, use default = 1000.0")
     1000.0
-  }
 
-  override def timeExtractor: TimeExtractor[RowWithIdx] = {
+  override def timeExtractor: TimeExtractor[RowWithIdx] =
     val rowExtractor = RowTsTimeExtractor(timeIndex, tsMultiplier, datetimeField)
     TimeExtractor.of(r => rowExtractor(r.row))
-  }
 
   override def extractor = RowSymbolExtractor(fieldsIdxMap).comap(_.row)
 
@@ -356,7 +329,7 @@ case class JdbcSource(
 
   implicit override def itemToKeyDecoder: Decoder[Any, String] = (x: Any) => x.toString
 
-  override def transformedFieldsIdxMap: Map[String, Int] = conf.dataTransformation match {
+  override def transformedFieldsIdxMap: Map[String, Int] = conf.dataTransformation match
     case Some(_) =>
       val acc = SparseRowsDataAccumulator[RowWithIdx, String, Any, RowWithIdx](this, patternFields)(
         timeExtractor,
@@ -369,7 +342,6 @@ case class JdbcSource(
       acc.allFieldsIndexesMap
     case None =>
       fieldsIdxMap
-  }
 
   implicit override def transformedTimeExtractor: TimeExtractor[RowWithIdx] =
     RowTsTimeExtractor(transformedTimeIndex, tsMultiplier, datetimeField).comap(_.row)
@@ -380,37 +352,33 @@ case class JdbcSource(
   override def partitionsColumns: Seq[String] = conf.partitionFields
 
   override def timeColumn: String = conf.datetimeField
-}
 
 // Fields types are only known at runtime, so we have to use Any here
 @SuppressWarnings(Array("org.wartremover.warts.Any"))
-object KafkaSource {
+object KafkaSource:
 
   val log = Logger[KafkaSource]
 
   def create(conf: KafkaInputConf, fields: Set[String]): Either[ConfigErr, KafkaSource] =
-    for {
+    for
       types <- KafkaService
         .fetchFieldsTypesInfo(conf)
         .toEither
         .leftMap[ConfigErr](e => SourceUnavailable(Option(e.getMessage).getOrElse(e.toString)))
       _ = log.info(s"Kafka types found: $types")
-      source <- StreamSource.findNullField(types.map(_._1), conf.datetimeField +: conf.partitionFields) match {
+      source <- StreamSource.findNullField(types.map(_._1), conf.datetimeField +: conf.partitionFields) match
         case Some(nullField) => KafkaSource(conf, types, nullField, fields).asRight
         case None => InvalidRequest("Source should contain at least one non partition and datatime field.").asLeft
-      }
-    } yield source
-
-}
+    yield source
 
 // Fields types are only known at runtime, so we have to use Any here
 @SuppressWarnings(Array("org.wartremover.warts.Any"))
 case class KafkaSource(
   conf: KafkaInputConf,
-  fieldsClasses: Seq[(String, Class[_])],
+  fieldsClasses: Seq[(String, Class[?])],
   nullFieldId: String,
   patternFields: Set[String]
-) extends StreamSource[RowWithIdx, String, Any] {
+) extends StreamSource[RowWithIdx, String, Any]:
 
   val log = Logger[KafkaSource]
 
@@ -423,10 +391,9 @@ case class KafkaSource(
 
   def timeIndex = fieldsIdxMap(conf.datetimeField)
 
-  def tsMultiplier = conf.timestampMultiplier.getOrElse {
+  def tsMultiplier = conf.timestampMultiplier.getOrElse:
     log.debug("timestampMultiplier in Kafka source conf is not provided, use default = 1000.0")
     1000.0
-  }
 
   implicit def extractor: ru.itclover.tsp.core.io.Extractor[RowWithIdx, String, Any] =
     RowSymbolExtractor(fieldsIdxMap).comap(_.row)
@@ -467,17 +434,15 @@ case class KafkaSource(
   def partitionsIdx = conf.partitionFields.filter(fieldsIdxMap.contains).map(fieldsIdxMap)
   def transformedPartitionsIdx = conf.partitionFields.map(transformedFieldsIdxMap)
 
-  def partitioner = {
+  def partitioner =
     val serializablePI = partitionsIdx
     (event: RowWithIdx) => serializablePI.map(event.row.apply).mkString
-  }
 
-  def transformedPartitioner = {
+  def transformedPartitioner =
     val serializablePI = transformedPartitionsIdx
     (event: RowWithIdx) => serializablePI.map(event.row.apply).mkString
-  }
 
-  override def transformedFieldsIdxMap: Map[String, Int] = conf.dataTransformation match {
+  override def transformedFieldsIdxMap: Map[String, Int] = conf.dataTransformation match
     case Some(_) =>
       val acc = SparseRowsDataAccumulator[RowWithIdx, String, Any, RowWithIdx](this, patternFields)(
         timeExtractor,
@@ -490,7 +455,6 @@ case class KafkaSource(
       acc.allFieldsIndexesMap
     case None =>
       fieldsIdxMap
-  }
 
   val transformedTimeIndex = transformedFieldsIdxMap(conf.datetimeField)
 
@@ -514,4 +478,3 @@ case class KafkaSource(
   override def partitionsColumns: Seq[String] = conf.partitionFields
 
   override def timeColumn: String = conf.datetimeField
-}

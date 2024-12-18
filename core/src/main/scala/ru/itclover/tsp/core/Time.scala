@@ -6,21 +6,18 @@ import java.time.{Duration, Instant, ZoneId}
 
 import scala.math.Ordering.Long
 
-case class Time(toMillis: Long) extends AnyVal with Serializable {
+case class Time(toMillis: Long) extends AnyVal with Serializable:
   def plus(window: Window): Time = Time(toMillis + window.toMillis)
   def minus(window: Window): Time = Time(toMillis - window.toMillis)
 
   override def toString: String = Time.DATE_TIME_FORMAT.format(Instant.ofEpochMilli(toMillis))
 
-}
-
 case class Window(toMillis: Long) extends Serializable
 
-object Time {
+object Time:
 
-  implicit val timeOrdering: Ordering[Time] = new Ordering[Time] {
+  implicit val timeOrdering: Ordering[Time] = new Ordering[Time]:
     override def compare(x: Time, y: Time) = Long.compare(x.toMillis, y.toMillis)
-  }
 
   val DATE_TIME_FORMAT: DateTimeFormatter =
     DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS").withZone(ZoneId.of("UTC"))
@@ -44,5 +41,3 @@ object Time {
   def less(w: Window) = Intervals.TimeInterval(max = w)
 
   def more(w: Window) = Intervals.TimeInterval(min = w)
-
-}

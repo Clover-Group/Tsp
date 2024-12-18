@@ -28,11 +28,11 @@ class GroupPatternTest extends AnyWordSpec with Matchers {
 
       val innerPattern = const(1) // returns Success(1) for any sequence of events
 
-      val events = (for (
-        time <- Timer(from = Instant.now());
-        idx  <- Increment;
-        row  <- Constant(0)
-      )
+      val events =
+        (for
+          time <- Timer(from = Instant.now());
+          idx  <- Increment;
+          row  <- Constant(0)
         yield Event[Int](time.toEpochMilli, idx.toLong, row, 0)).run(seconds = 100)
 
       import cats.instances.int.catsKernelStdGroupForInt
@@ -58,20 +58,19 @@ class GroupPatternTest extends AnyWordSpec with Matchers {
 
       val pattern = p.assert(p.truthCount(p.assert(p.field(_.row) > p.const(5)), Window(10)) > const(0))
 
-      val events = (for (
+      val events = (for
         time <- Timer(from = Instant.now());
         idx  <- Increment;
         row  <- RandomInRange(0, 10)(new Random()).timed(5.seconds)
-      )
-        yield Event[Int](time.toEpochMilli, idx.toLong, row.toInt, 0)).run(seconds = 5)
+      yield Event[Int](time.toEpochMilli, idx.toLong, row.toInt, 0)).run(seconds = 5)
 
-      val collect = new ArrayBuffer[IdxValue[_]]()
-      StateMachine[Id].run(pattern, (1, 1), events, pattern.initialState(), (x: IdxValue[_]) => collect += x)
+      val collect = new ArrayBuffer[IdxValue[?]]()
+      StateMachine[Id].run(pattern, (1, 1), events, pattern.initialState(), (x: IdxValue[?]) => collect += x)
 
       var counter = 0
 
       collect.foreach(item => {
-        if (item.value.isFail) {
+        if item.value.isFail then {
           counter += 1
         }
       })
@@ -87,15 +86,14 @@ class GroupPatternTest extends AnyWordSpec with Matchers {
 
       val pattern = p.assert(p.field(_.row) > const(10))
 
-      val events = (for (
+      val events = (for
         time <- Timer(from = Instant.now());
         idx  <- Increment;
         row  <- RandomInRange(0, 5)(new Random()).timed(5.seconds)
-      )
-        yield Event[Int](time.toEpochMilli, idx.toLong, row.toInt, 0)).run(seconds = 5)
+      yield Event[Int](time.toEpochMilli, idx.toLong, row.toInt, 0)).run(seconds = 5)
 
-      val collect = new ArrayBuffer[IdxValue[_]]()
-      StateMachine[Id].run(pattern, (1, 1), events, pattern.initialState(), (x: IdxValue[_]) => collect += x)
+      val collect = new ArrayBuffer[IdxValue[?]]()
+      StateMachine[Id].run(pattern, (1, 1), events, pattern.initialState(), (x: IdxValue[?]) => collect += x)
 
       collect.foreach(item => {
         item.value.isFail shouldBe true

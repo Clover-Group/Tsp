@@ -100,7 +100,7 @@ case class AndThen[A](first: TimeSeriesGenerator[A], next: TimeSeriesGenerator[A
   override def howLong: Duration = first.howLong + next.howLong
 
   override def apply(v1: Duration): A = {
-    if (first.isDefinedAt(v1)) {
+    if first.isDefinedAt(v1) then {
       first(v1)
     } else {
       (next(v1))

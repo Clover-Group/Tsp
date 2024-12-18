@@ -4,9 +4,8 @@ import java.sql.Types
 
 /** Schema for writing data to sink.
   */
-trait SinkSchema extends Serializable {
+trait SinkSchema extends Serializable:
   def rowSchema: EventSchema
-}
 
 //case class KafkaSegmentsSink(schemaUri: String, brokerList: String, topicId: String, rowSchema: RowSchema) {
 //  override def toString: String = {
@@ -14,7 +13,7 @@ trait SinkSchema extends Serializable {
 //  }
 //}
 
-trait EventSchema { // TODO fieldsTypesInfo to PatternsSearchJob
+trait EventSchema: // TODO fieldsTypesInfo to PatternsSearchJob
   def fieldsTypes: List[Int]
 
   def fieldsNames: List[String]
@@ -22,21 +21,19 @@ trait EventSchema { // TODO fieldsTypesInfo to PatternsSearchJob
   def fieldsCount: Int
 
   def fieldsIndices: Map[String, Int]
-}
 
-sealed trait EventSchemaValue {
+sealed trait EventSchemaValue:
   def `type`: String
-}
 
 case class IntESValue(override val `type`: String, value: Long) extends EventSchemaValue
 case class FloatESValue(override val `type`: String, value: Double) extends EventSchemaValue
 case class StringESValue(override val `type`: String, value: String) extends EventSchemaValue
 case class ObjectESValue(override val `type`: String, value: Map[String, EventSchemaValue]) extends EventSchemaValue
 
-case class NewRowSchema(data: Map[String, EventSchemaValue]) extends EventSchema {
+case class NewRowSchema(data: Map[String, EventSchemaValue]) extends EventSchema:
 
   override def fieldsTypes: List[Int] = data.map { case (_, v) =>
-    v.`type` match {
+    v.`type` match
       case "int8"      => Types.INTEGER
       case "int16"     => Types.INTEGER
       case "int32"     => Types.INTEGER
@@ -48,7 +45,6 @@ case class NewRowSchema(data: Map[String, EventSchemaValue]) extends EventSchema
       case "timestamp" => Types.TIMESTAMP
       case "object"    => Types.VARCHAR
       case _           => Types.BINARY
-    }
   }.toList
 
   override def fieldsNames: List[String] = data.map { case (k, _) =>
@@ -58,4 +54,3 @@ case class NewRowSchema(data: Map[String, EventSchemaValue]) extends EventSchema
   override def fieldsCount: Int = data.size
 
   override def fieldsIndices: Map[String, Int] = fieldsNames.zipWithIndex.toMap
-}

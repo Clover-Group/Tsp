@@ -13,11 +13,12 @@ import ru.itclover.tsp.core.aggregators.{
 import ru.itclover.tsp.core.{Pat, _}
 import ru.itclover.tsp.core.io.TimeExtractor
 import ru.itclover.tsp.core.optimizations.Optimizer.S
+import scala.reflect.ClassTag
 
 // Deals haevily with Any, so disable the wart warning.
 // However, a better way can probably be found.
 @SuppressWarnings(Array("org.wartremover.warts.Any"))
-class Optimizer[E: IdxExtractor: TimeExtractor]() extends Serializable {
+class Optimizer[E: IdxExtractor: TimeExtractor]() extends Serializable:
 
   def optimizations[T] =
     Seq(coupleOfTwoConst[T], optimizeInners[T], coupleOfTwoSimple[T], mapOfConst[T], mapOfSimple[T], mapOfMap[T])
@@ -26,29 +27,26 @@ class Optimizer[E: IdxExtractor: TimeExtractor]() extends Serializable {
     optimizations[T].exists(_.isDefinedAt(pat))
 
   def applyOptimizations[T](pat: Pat[E, T]): (Pat[E, T], Boolean) =
-    optimizations[T].foldLeft(pat -> false) {
+    optimizations[T].foldLeft(pat -> false):
       case ((p, _), rule) if rule.isDefinedAt(p) => rule.apply(p).asInstanceOf[Pat[E, T]] -> true
       case (x, _)                                => x
-    }
 
   def optimize[T](pattern: Pat[E, T]): Pattern[E, S[T], T] = forceState(optimizePat(pattern))
 
-  private def optimizePat[T](pattern: Pat[E, T]): Pat[E, T] = {
+  private def optimizePat[T](pattern: Pat[E, T]): Pat[E, T] =
 
     val optimizedPatternIterator = Iterator.iterate(pattern -> true) { case (p, _) => applyOptimizations(p) }
 
     // try no more than 10 cycles of optimizations to avoid infinite recursive loops in case of wrong rule.
     optimizedPatternIterator.takeWhile(_._2).take(10).map(_._1).toSeq.last
-  }
 
   type OptimizeRule[T] = PartialFunction[Pat[E, T], Pat[E, T]]
 
-  private def coupleOfTwoConst[T]: OptimizeRule[T] = {
+  private def coupleOfTwoConst[T]: OptimizeRule[T] =
     case Pat(x @ CouplePattern(Pat(ConstPattern(a)), Pat(ConstPattern(b)))) =>
       ConstPattern[E, T](x.func.apply(a, b))
-  }
 
-  private def coupleOfTwoSimple[T]: OptimizeRule[T] = {
+  private def coupleOfTwoSimple[T]: OptimizeRule[T] =
     // couple(simple, simple) => simple
     case Pat(
           x @ CouplePattern(Pat(SimplePattern(fleft: (E => Result[_]))), Pat(SimplePattern(fright: (E => Result[_]))))
@@ -66,7 +64,6 @@ class Optimizer[E: IdxExtractor: TimeExtractor]() extends Serializable {
     // couple(const, some) => map(some)
     case Pat(x @ CouplePattern(Pat(ConstPattern(l)), right)) =>
       MapPattern(forceState(right))(t => x.func.apply(l, Result.succ(t)))
-  }
 
   private def mapOfConst[T]: OptimizeRule[T] = { case Pat(map @ MapPattern(Pat(ConstPattern(x)))) =>
     ConstPattern[E, T](x.flatMap(map.func))
@@ -80,7 +77,7 @@ class Optimizer[E: IdxExtractor: TimeExtractor]() extends Serializable {
     MapPattern(forceState(inner))(t => innerMap.func(t).flatMap(map.func))
   }
 
-  private def optimizeInners[T]: OptimizeRule[T] = {
+  private def optimizeInners[T]: OptimizeRule[T] =
     case AndThenPattern(first, second, window) if optimizable(first) || optimizable(second) =>
       AndThenPattern(
         forceState(optimizePat(first)),
@@ -94,19 +91,27 @@ class Optimizer[E: IdxExtractor: TimeExtractor]() extends Serializable {
         forceState(optimizePat(left)),
         forceState(optimizePat(right))
       )(x.func)
-    case x: TimestampsAdderPattern[E, _, _] if optimizable(x.inner) =>
-      new TimestampsAdderPattern(forceState(optimizePat(x.inner))).asInstanceOf[Pat[E, T]]
-    case x: ReducePattern[E, _, _, T] if x.patterns.exists(optimizable) => {
+    case x: TimestampsAdderPattern[?, ?, ?] if optimizable(x.inner) =>
+      new TimestampsAdderPattern(forceState(optimizePat(x.asInstanceOf[TimestampsAdderPattern[E, ?, ?]].inner)))
+        .asInstanceOf[Pat[E, T]]
+    case x: ReducePattern[?, ?, ?, ?] if x.patterns.exists(optimizable) => {
       def cast[St, Ty](
         pats: Seq[Pat[E, Ty]]
       ): Seq[Pattern[E, St, Ty]] =
         pats.asInstanceOf[Seq[Pattern[E, St, Ty]]]
-      new ReducePattern(cast(x.patterns.map(t => optimizePat(t))))(x.func, x.transform, x.filterCond, x.initial)
+      val xAsPat = x.asInstanceOf[ReducePattern[E, ?, ?, T]]
+      new ReducePattern(cast(xAsPat.patterns.map(t => optimizePat(t))))(
+        xAsPat.func,
+        xAsPat.transform,
+        xAsPat.filterCond,
+        xAsPat.initial
+      )
     }
-    case x @ GroupPattern(inner, window) if optimizable(inner) => {
-      implicit val group: Group[T] = x.group.asInstanceOf[Group[T]]
-      val newInner: Pattern[E, S[T], T] = forceState(optimizePat(inner.asInstanceOf[Pat[E, T]]))
-      GroupPattern[E, S[T], T](newInner, window).asInstanceOf[Pat[E, T]]
+    case x: GroupPattern[?, ?, ?] if optimizable(x.inner) => {
+      val xAsPat = x.asInstanceOf[GroupPattern[E, S[T], T]]
+      implicit val group: Group[T] = xAsPat.group.asInstanceOf[Group[T]]
+      val newInner: Pattern[E, S[T], T] = forceState(optimizePat(xAsPat.inner.asInstanceOf[Pat[E, T]]))
+      GroupPattern[E, S[T], T](newInner, xAsPat.window).asInstanceOf[Pat[E, T]]
     }
     case PreviousValue(inner, window) if optimizable(inner) => PreviousValue(forceState(optimizePat(inner)), window)
     case TimerPattern(inner, window, gap) if optimizable(inner) =>
@@ -114,7 +119,6 @@ class Optimizer[E: IdxExtractor: TimeExtractor]() extends Serializable {
     case WindowStatistic(inner, window) if optimizable(inner) => WindowStatistic(forceState(optimizePat(inner)), window)
     case SegmentizerPattern(inner) if optimizable(inner)      => SegmentizerPattern(forceState(optimizePat(inner)))
     case WaitPattern(inner, window) if optimizable(inner)     => WaitPattern(forceState(optimizePat(inner)), window)
-  }
 
   // Need to cast Pat[E,T] to some Pattern type. Pattern has restriction on State
   // type parameters which is constant, so simple asInstanceOf complains on
@@ -122,10 +126,7 @@ class Optimizer[E: IdxExtractor: TimeExtractor]() extends Serializable {
   private def forceState[T](pat: Pat[E, T]): Pattern[E, S[T], T] =
     pat.asInstanceOf[Pattern[E, S[T], T]]
 
-}
-
-object Optimizer {
+object Optimizer:
   // Fake type to return from Optimizer. Needs to meet the
   // constraints of Pattern type parameters.
   type S[T]
-}

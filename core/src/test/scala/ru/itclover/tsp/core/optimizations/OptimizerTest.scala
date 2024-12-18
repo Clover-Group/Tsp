@@ -28,31 +28,31 @@ class OptimizerTest extends AnyFlatSpec with Matchers {
   it should "optimize map(simple) to simple" in {
     val pat = field(_.col).map(_ + 2)
 
-    new Optimizer[EInt].optimize(pat) shouldBe a[ru.itclover.tsp.core.SimplePattern[EInt, _]]
+    new Optimizer[EInt].optimize(pat) shouldBe a[ru.itclover.tsp.core.SimplePattern[EInt, ?]]
   }
 
   it should "optimize couple(simple, const) to simple" in {
     val pat = field(_.col) > const(3)
 
-    new Optimizer[EInt].optimize(pat) shouldBe a[ru.itclover.tsp.core.SimplePattern[EInt, _]]
+    new Optimizer[EInt].optimize(pat) shouldBe a[ru.itclover.tsp.core.SimplePattern[EInt, ?]]
   }
 
   it should "optimize couple(const, simple) to simple" in {
     val pat = const(3) > field(_.col)
 
-    new Optimizer[EInt].optimize(pat) shouldBe a[ru.itclover.tsp.core.SimplePattern[EInt, _]]
+    new Optimizer[EInt].optimize(pat) shouldBe a[ru.itclover.tsp.core.SimplePattern[EInt, ?]]
   }
 
   it should "optimize couple(simple, simple) to simple" in {
     val pat = field(_.col) > field(_.col)
 
-    new Optimizer[EInt].optimize(pat) shouldBe a[ru.itclover.tsp.core.SimplePattern[EInt, _]]
+    new Optimizer[EInt].optimize(pat) shouldBe a[ru.itclover.tsp.core.SimplePattern[EInt, ?]]
   }
 
   it should "optimize map(map(simple) to simple" in {
     val pat = field(_.col).map(_ + 2).map(_ * 3)
 
-    new Optimizer[EInt].optimize(pat) shouldBe a[ru.itclover.tsp.core.SimplePattern[EInt, _]]
+    new Optimizer[EInt].optimize(pat) shouldBe a[ru.itclover.tsp.core.SimplePattern[EInt, ?]]
   }
 
 //  it should "optimize couple(some, const) to map" in {

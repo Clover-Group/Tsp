@@ -9,7 +9,7 @@ import scala.collection.{mutable => m}
 
 class TimestampsAdderPattern[Event: IdxExtractor: TimeExtractor, S, T](
   override val inner: Pattern[Event, S, T]
-) extends AccumPattern[Event, S, T, Segment, TimestampAdderAccumState[T]] {
+) extends AccumPattern[Event, S, T, Segment, TimestampAdderAccumState[T]]:
 
   override def initialState(): AggregatorPState[S, T, TimestampAdderAccumState[T]] = AggregatorPState(
     inner.initialState(),
@@ -21,24 +21,19 @@ class TimestampsAdderPattern[Event: IdxExtractor: TimeExtractor, S, T](
   override val window: Window = MaxWindow
 
   override def toString: String = s"TimestampsAdderPattern($inner)"
-}
 
-protected case class TimestampAdderAccumState[T]() extends AccumState[T, Segment, TimestampAdderAccumState[T]] {
+protected case class TimestampAdderAccumState[T]() extends AccumState[T, Segment, TimestampAdderAccumState[T]]:
 
   @inline
   override def updated(
     window: Window,
     times: m.ArrayDeque[(Idx, Time)],
     idxValue: IdxValue[T]
-  ): (TimestampAdderAccumState[T], QI[Segment]) = {
-    if (times.isEmpty) (this, PQueue.empty)
-    else {
+  ): (TimestampAdderAccumState[T], QI[Segment]) =
+    if times.isEmpty then (this, PQueue.empty)
+    else
       val resultValue = idxValue.value match
         case Fail    => Fail
         case Wait    => Succ(Segment(times.head._2, times.last._2, true))
         case Succ(_) => Succ(Segment(times.head._2, times.last._2, false))
       (TimestampAdderAccumState(), PQueue.apply(idxValue.copy(value = resultValue)))
-    }
-  }
-
-}
