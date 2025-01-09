@@ -119,11 +119,13 @@ Column1 > 0 for 30 sec >= 5 times (at least five times during the thirty-second 
 Column2 = 0 for 1 min < 5 seconds (less than five seconds during the minute window)
 ```
 
-_Note: the success interval of the timed condition starts **after** 
+_Note: In TSP v19 and below, the success interval of the timed condition starts **after** 
 the window ends (i.e. when it becomes known that the condition holds.
 E.g. in the pattern `A > 0 for 2 hours`, if A holds from 9:00 to 12:00
 hours (during the same day), the reported interval of success will be
 from 11:00 to 12:00. See also `wait`)_
+
+_In TSP v20, the success interval starts from the very beginning as expected._
 
 _Combined pattern_ is a combination of the conditions (simple or timed)
 via the operators `and`, `or`, and `andThen`.
